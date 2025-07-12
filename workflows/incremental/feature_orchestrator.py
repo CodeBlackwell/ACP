@@ -26,7 +26,8 @@ async def run_incremental_coding_phase(
     designer_output: str,
     requirements: str,
     tests: Optional[str] = None,
-    max_retries: int = 3
+    max_retries: int = 3,
+    session_id: Optional[str] = None
 ) -> Tuple[str, Dict[str, Any]]:
     """
     Helper function for workflow integration.
@@ -37,16 +38,24 @@ async def run_incremental_coding_phase(
     # For now, just run the standard coder implementation
     # This is a simplified version for debugging
     
-    from orchestrator.orchestrator_agent import run_team_member_with_tracking
+    from orchestrator.orchestrator_agent import run_team_member
+    from workflows.message_utils import extract_message_content
     
     # Prepare input for coder
     coder_input = f"Design:\n{designer_output}\n\nRequirements: {requirements}"
     if tests:
         coder_input += f"\n\nTests:\n{tests}"
+    if session_id:
+        coder_input = f"SESSION_ID: {session_id}\n\n{coder_input}"
+        print(f"🔗 Passing session ID to coder: {session_id}")
+        # Debug: print first 100 chars of coder input
+        print(f"📝 Coder input preview: {coder_input[:100]}...")
+    else:
+        print("⚠️  No session ID provided to feature orchestrator")
     
     # Run coder
-    code_result = await run_team_member_with_tracking("coder_agent", coder_input, "incremental_coding")
-    code_output = str(code_result)
+    code_result = await run_team_member("coder_agent", coder_input)
+    code_output = extract_message_content(code_result)
     
     # Return simplified metrics
     execution_metrics = {
@@ -66,7 +75,8 @@ async def execute_features_incrementally(
     requirements: str,
     design: str,
     tests: Optional[str],
-    max_retries: int = 3
+    max_retries: int = 3,
+    session_id: Optional[str] = None
 ) -> Tuple[List[Dict[str, Any]], Dict[str, str]]:
     """
     Execute features incrementally with retry logic.
@@ -110,6 +120,10 @@ Context:
 Previous implementations:
 {str(final_codebase)}
 """
+                
+                # Add session ID if provided
+                if session_id:
+                    coder_input = f"SESSION_ID: {session_id}\n\n{coder_input}"
                 
                 code_output = await run_agent("coder", coder_input, f"feature_{feature.id}")
                 

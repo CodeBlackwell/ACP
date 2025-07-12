@@ -28,6 +28,39 @@ async def coder_agent(input: list[Message]) -> AsyncGenerator:
     """Agent responsible for writing code implementations and creating project files"""
     llm = ChatModel.from_name(coder_config["model"])
     
+    # Extract input text
+    input_text = ""
+    for message in input:
+        for part in message.parts:
+            input_text += part.content + "\n"
+    
+    # Debug: Print input length and first few characters
+    print(f"📊 Input length: {len(input_text)} characters")
+    if "SESSION_ID" in input_text:
+        print("✅ SESSION_ID found in input text")
+    else:
+        print("❌ SESSION_ID NOT found in input text")
+    
+    # Check if a SESSION_ID or PROJECT_DIR was provided in the input
+    session_id = None
+    project_dir = None
+    
+    # Extract SESSION_ID if present
+    session_match = re.search(r'SESSION_ID:\s*(\S+)', input_text)
+    if session_match:
+        session_id = session_match.group(1)
+        print(f"📋 Using session ID: {session_id}")
+    else:
+        print(f"⚠️  No SESSION_ID found in input (searched for 'SESSION_ID:')")
+        # Debug: print first 200 chars of input
+        print(f"🔍 Input preview: {input_text[:200]}...")
+    
+    # Extract PROJECT_DIR if present
+    dir_match = re.search(r'PROJECT_DIR:\s*(.+?)(?:\n|$)', input_text)
+    if dir_match:
+        project_dir = dir_match.group(1).strip()
+        print(f"📁 Using project directory: {project_dir}")
+    
     agent = ReActAgent(
         llm=llm, 
         tools=[], 
@@ -110,23 +143,40 @@ async def coder_agent(input: list[Message]) -> AsyncGenerator:
         elif "social" in response_text.lower():
             project_name = "social_app"
         
-        # Create user-friendly timestamp
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        # Check if we should reuse an existing directory
+        if project_dir:
+            # Use the provided project directory
+            project_root = project_dir
+            project_folder_name = os.path.basename(project_root)
+            print(f"📂 Reusing existing project directory: {project_root}")
+        elif session_id:
+            # Use session ID to create/find directory
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            project_base = os.path.abspath(os.path.join(script_dir, "..", ".."))
+            generated_dir = os.path.abspath(os.path.join(project_base, GENERATED_CODE_PATH))
+            
+            # Create directory name based on session ID
+            project_folder_name = f"{project_name}_session_{session_id}"
+            project_root = os.path.join(generated_dir, project_folder_name)
+            print(f"📂 Using session-based directory: {project_root}")
+        else:
+            # Create new directory with timestamp (original behavior)
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            
+            # Determine project root directory using the centralized configuration
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            project_base = os.path.abspath(os.path.join(script_dir, "..", ".."))
+            
+            # Use the centralized GENERATED_CODE_PATH configuration
+            generated_dir = os.path.abspath(os.path.join(project_base, GENERATED_CODE_PATH))
+            print(f"🔄 Using generated code path: {generated_dir}")  # Debug log
+            
+            project_folder_name = f"{project_name}_generated_{timestamp}"
+            project_root = os.path.join(generated_dir, project_folder_name)
+            print(f"📁 Creating new project directory: {project_root}")
         
-        # Determine project root directory using the centralized configuration
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        project_base = os.path.abspath(os.path.join(script_dir, "..", ".."))
-        
-        # Use the centralized GENERATED_CODE_PATH configuration
-        generated_dir = os.path.abspath(os.path.join(project_base, GENERATED_CODE_PATH))
-        print(f"🔄 Using generated code path: {generated_dir}")  # Debug log
-        
-        project_folder_name = f"{project_name}_generated_{timestamp}"
-        project_root = os.path.join(generated_dir, project_folder_name)
-        
-        # Create generated and project directories
+        # Create the directory if it doesn't exist
         os.makedirs(project_root, exist_ok=True)
-        print(f"📁 Created project directory: {project_root}")
         
         # Parse files from the response
         
@@ -179,10 +229,15 @@ async def coder_agent(input: list[Message]) -> AsyncGenerator:
                     print(f"❌ Error writing file {file_path}: {file_error}")
             
             # Generate a summary of created files
+            # Include session info if using session-based directory
+            session_info = ""
+            if session_id:
+                session_info = f"🔗 Session ID: {session_id}\n"
+            
             files_summary = f"""
 ✅ PROJECT CREATED: {project_folder_name}
 📁 Location: {project_root}
-📄 Files created: {len(created_files)}
+{session_info}📄 Files created: {len(created_files)}
 🕐 Generated: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 
 Files:
@@ -239,10 +294,15 @@ Files:
                     except Exception as file_error:
                         print(f"❌ Error creating fallback file {filename}: {file_error}")
                 
+                # Include session info if using session-based directory
+                session_info = ""
+                if session_id:
+                    session_info = f"🔗 Session ID: {session_id}\n"
+                
                 files_summary = f"""
 ✅ PROJECT CREATED: {project_folder_name} (via fallback extraction)
 📁 Location: {project_root}
-📄 Files created: {len(created_files)}
+{session_info}📄 Files created: {len(created_files)}
 🕐 Generated: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 
 Files:

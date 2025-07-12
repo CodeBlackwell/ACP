@@ -40,18 +40,16 @@ async def execute_tdd_workflow(input_data: CodingTeamInput) -> List[TeamMemberRe
     review_output = utils_module.review_output
 
     # Import run_team_member dynamically to avoid circular imports
-    from orchestrator.orchestrator_agent import run_team_member_with_tracking
+    from orchestrator.orchestrator_agent import run_team_member
     
     # Initialize results list
     results = []
     
     try:
         # Planning phase
-        planning_result = await run_team_member_with_tracking(
+        planning_result = await run_team_member(
             "planner_agent",
-            input_data.requirements,
-            "tdd_planning"
-        )
+            input_data.requirements)
         planning_output = str(planning_result)
         results.append(TeamMemberResult(
             team_member=TeamMember.planner,
@@ -68,11 +66,9 @@ async def execute_tdd_workflow(input_data: CodingTeamInput) -> List[TeamMemberRe
         
         # Design phase
         design_input = f"Plan:\n{planning_output}\n\nRequirements: {input_data.requirements}"
-        design_result = await run_team_member_with_tracking(
+        design_result = await run_team_member(
             "designer_agent",
-            design_input,
-            "tdd_design"
-        )
+            design_input)
         design_output = str(design_result)
         results.append(TeamMemberResult(
             team_member=TeamMember.designer,
@@ -89,11 +85,9 @@ async def execute_tdd_workflow(input_data: CodingTeamInput) -> List[TeamMemberRe
         
         # Test Writing phase
         test_input = f"Design:\n{design_output}\n\nRequirements: {input_data.requirements}"
-        test_result = await run_team_member_with_tracking(
+        test_result = await run_team_member(
             "test_writer_agent",
-            test_input,
-            "tdd_test_writing"
-        )
+            test_input)
         test_output = str(test_result)
         results.append(TeamMemberResult(
             team_member=TeamMember.test_writer,
@@ -110,11 +104,9 @@ async def execute_tdd_workflow(input_data: CodingTeamInput) -> List[TeamMemberRe
         
         # Implementation phase
         impl_input = f"Plan:\n{planning_output}\n\nDesign:\n{design_output}\n\nTests:\n{test_output}\n\nRequirements: {input_data.requirements}"
-        impl_result = await run_team_member_with_tracking(
+        impl_result = await run_team_member(
             "coder_agent",
-            impl_input,
-            "tdd_implementation"
-        )
+            impl_input)
         impl_output = str(impl_result)
         results.append(TeamMemberResult(
             team_member=TeamMember.coder,
@@ -138,11 +130,9 @@ CODE:
 {impl_output}
 """
             
-            execution_result = await run_team_member_with_tracking(
+            execution_result = await run_team_member(
                 "executor_agent",
-                execution_input,
-                "tdd_execution"
-            )
+                execution_input)
             execution_output = str(execution_result)
             
             # Add execution results to the results list
@@ -154,11 +144,9 @@ CODE:
         
         # Final review
         review_input = f"Requirements: {input_data.requirements}\n\nPlan:\n{planning_output}\n\nDesign:\n{design_output}\n\nTests:\n{test_output}\n\nImplementation:\n{impl_output}"
-        review_result = await run_team_member_with_tracking(
+        review_result = await run_team_member(
             "reviewer_agent",
-            review_input,
-            "tdd_final_review"
-        )
+            review_input)
         review_output = str(review_result)
         results.append(TeamMemberResult(
             team_member=TeamMember.reviewer,

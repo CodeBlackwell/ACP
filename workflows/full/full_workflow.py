@@ -30,7 +30,7 @@ async def execute_full_workflow(input_data: CodingTeamInput) -> List[TeamMemberR
         return results
     except Exception as e:
         # Handle exceptions
-        error_msg = f"Full workflow error: {str(e)}"
+        error_msg = f"Full workflow error: {extract_message_content(e)}"
         print(f"ERROR: {error_msg}")
         raise
 
@@ -47,7 +47,12 @@ async def run_full_workflow(requirements: str, team_members: List[str]) -> List[
         List of team member results
     """
     # Import run_team_member dynamically to avoid circular imports
-    from orchestrator.orchestrator_agent import run_team_member_with_tracking
+    from orchestrator.orchestrator_agent import run_team_member
+    from workflows.message_utils import extract_message_content
+    
+    # Generate a session ID for this workflow run
+    workflow_session_id = generate_session_id()
+    print(f"🔗 Workflow Session ID: {workflow_session_id}")
 
     # Import review_output from the renamed workflow_utils.py file
     from workflows import workflow_utils
@@ -62,8 +67,8 @@ async def run_full_workflow(requirements: str, team_members: List[str]) -> List[
     # Step 1: Planning
     if "planner" in team_members:
         print("📋 Planning phase...")
-        planning_result = await run_team_member_with_tracking("planner_agent", requirements, "full_planning")
-        plan_output = str(planning_result)
+        planning_result = await run_team_member("planner_agent", requirements)
+        plan_output = extract_message_content(planning_result)
         results.append(TeamMemberResult(
             team_member=TeamMember.planner,
             output=plan_output,
@@ -81,8 +86,8 @@ async def run_full_workflow(requirements: str, team_members: List[str]) -> List[
         if "designer" in team_members:
             print("🎨 Design phase...")
             design_input = f"Plan:\n{plan_output}\n\nRequirements: {requirements}"
-            design_result = await run_team_member_with_tracking("designer_agent", design_input, "full_design")
-            design_output = str(design_result)
+            design_result = await run_team_member("designer_agent", design_input)
+            design_output = extract_message_content(design_result)
             results.append(TeamMemberResult(
                 team_member=TeamMember.designer,
                 output=design_output,
@@ -106,7 +111,8 @@ async def run_full_workflow(requirements: str, team_members: List[str]) -> List[
                         designer_output=design_output,
                         requirements=requirements,
                         tests=None,  # No tests in full workflow
-                        max_retries=3
+                        max_retries=3,
+                        session_id=workflow_session_id  # Pass session ID
                     )
                     
                     
@@ -138,8 +144,8 @@ Execute the following code:
 {code_output}
 """
                         
-                        execution_result = await run_team_member_with_tracking("executor_agent", execution_input, "full_execution")
-                        execution_output = str(execution_result)
+                        execution_result = await run_team_member("executor_agent", execution_input)
+                        execution_output = extract_message_content(execution_result)
                         
                         
                         # Add execution results to the results list
@@ -150,14 +156,14 @@ Execute the following code:
                         ))
                     
                 except Exception as e:
-                    error_msg = f"Incremental coding phase error: {str(e)}"
+                    error_msg = f"Incremental coding phase error: {extract_message_content(e)}"
                     print(f"❌ {error_msg}")
                     # Fall back to standard coder implementation
                     print("⚠️ Falling back to standard implementation...")
                     
-                    code_input = f"Plan:\n{plan_output}\n\nDesign:\n{design_output}\n\nRequirements: {requirements}"
-                    code_result = await run_team_member_with_tracking("coder_agent", code_input, "full_coding")
-                    code_output = str(code_result)
+                    code_input = f"SESSION_ID: {workflow_session_id}\n\nPlan:\n{plan_output}\n\nDesign:\n{design_output}\n\nRequirements: {requirements}"
+                    code_result = await run_team_member("coder_agent", code_input)
+                    code_output = extract_message_content(code_result)
                     
                     results.append(TeamMemberResult(
                         team_member=TeamMember.coder,
@@ -179,8 +185,8 @@ Execute the following code:
 {code_output}
 """
                         
-                        execution_result = await run_team_member_with_tracking("executor_agent", execution_input, "full_execution_fallback")
-                        execution_output = str(execution_result)
+                        execution_result = await run_team_member("executor_agent", execution_input)
+                        execution_output = extract_message_content(execution_result)
                         
                         
                         # Add execution results to the results list
@@ -194,8 +200,8 @@ Execute the following code:
                 if "reviewer" in team_members:
                     print("🔍 Final review phase...")
                     review_input = f"Requirements: {requirements}\n\nPlan:\n{plan_output}\n\nDesign:\n{design_output}\n\nImplementation:\n{code_output}"
-                    review_result = await run_team_member_with_tracking("reviewer_agent", review_input, "full_final_review")
-                    review_result_output = str(review_result)
+                    review_result = await run_team_member("reviewer_agent", review_input)
+                    review_result_output = extract_message_content(review_result)
                     results.append(TeamMemberResult(
                         team_member=TeamMember.reviewer,
                         output=review_result_output,

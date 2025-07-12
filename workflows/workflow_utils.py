@@ -19,7 +19,7 @@ async def review_output(content: str, context: str = "", max_retries: int = MAX_
         Tuple of (approved: bool, feedback: str)
     """
     # Import run_team_member dynamically to avoid circular imports
-    from orchestrator.orchestrator_agent import run_team_member_with_tracking
+    from orchestrator.orchestrator_agent import run_team_member
     
     review_prompt = f"""
     Please review the following output:
@@ -35,7 +35,7 @@ async def review_output(content: str, context: str = "", max_retries: int = MAX_
     retry_count = 0
     
     try:
-        review_response = await run_team_member_with_tracking("reviewer_agent", review_prompt, "review_output")
+        review_response = await run_team_member("reviewer_agent", review_prompt)
         
         if "APPROVED" in review_response.upper():
             return True, "Approved by reviewer"

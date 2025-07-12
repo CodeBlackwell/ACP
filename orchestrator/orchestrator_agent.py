@@ -216,63 +216,10 @@ class ProgressReport:
 current_progress_report: Optional[ProgressReport] = None
 
 # ============================================================================
-# INDIVIDUAL TEAM MEMBER AGENTS (Enhanced with Progress Tracking)
+# INDIVIDUAL TEAM MEMBER AGENTS
 # ============================================================================
 
-async def run_team_member_with_tracking(agent: str, input: str, objective_name: str) -> List[Message]:
-    """Enhanced team member execution with progress tracking"""
-    global current_progress_report
-    
-    if current_progress_report:
-        # Find or create objective
-        objective = None
-        for obj in current_progress_report.objectives:
-            if obj.name == objective_name:
-                objective = obj
-                break
-        
-        if not objective:
-            objective = ObjectiveStatus(
-                name=objective_name,
-                description=f"Execute {agent} for {objective_name}",
-                agent=agent,
-                status="pending"
-            )
-            current_progress_report.objectives.append(objective)
-        
-        # Update status to in_progress
-        objective.status = "in_progress"
-        objective.start_time = time.time()
-    
-    try:
-        # Execute the agent
-        result = await run_team_member(agent, input)
-        
-        if current_progress_report and objective:
-            # Update status to completed
-            objective.status = "completed"
-            objective.end_time = time.time()
-            objective.output_length = len(str(result[0])) if result else 0
-            
-            # Analyze output for challenges
-            output_text = str(result[0]).lower() if result else ""
-            if any(keyword in output_text for keyword in ["error", "issue", "problem", "challenge"]):
-                objective.challenges.append("Potential issues detected in output")
-        
-        return result
-        
-    except Exception as e:
-        if current_progress_report and objective:
-            objective.status = "failed"
-            objective.end_time = time.time()
-            objective.challenges.append(f"Execution failed: {str(e)}")
-            
-            # Add to global challenges
-            current_progress_report.challenges.append(f"{agent} failed: {str(e)}")
-        
-        raise e
-
-# Original run_team_member function (keeping for compatibility)
+# run_team_member function
 async def run_team_member(agent: str, input: str) -> list[Message]:
     """Calls a team member agent using ACP protocol"""
     agent_ports = {

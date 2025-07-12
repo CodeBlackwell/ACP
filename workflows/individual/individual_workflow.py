@@ -45,12 +45,12 @@ async def run_individual_workflow(requirements: str, step_type: str) -> List[Tea
         List of team member results
     """
     # Import run_team_member dynamically to avoid circular imports
-    from orchestrator.orchestrator_agent import run_team_member_with_tracking
+    from orchestrator.orchestrator_agent import run_team_member
     
     results = []
     
     if step_type == "planning":
-        result = await run_team_member_with_tracking("planner_agent", requirements, "individual_planning")
+        result = await run_team_member("planner_agent", requirements)
         results.append(TeamMemberResult(
             team_member=TeamMember.planner,
             output=str(result),
@@ -58,7 +58,7 @@ async def run_individual_workflow(requirements: str, step_type: str) -> List[Tea
         ))
         
     elif step_type == "design":
-        result = await run_team_member_with_tracking("designer_agent", requirements, "individual_design")
+        result = await run_team_member("designer_agent", requirements)
         results.append(TeamMemberResult(
             team_member=TeamMember.designer,
             output=str(result),
@@ -66,7 +66,7 @@ async def run_individual_workflow(requirements: str, step_type: str) -> List[Tea
         ))
         
     elif step_type == "test_writing":
-        result = await run_team_member_with_tracking("test_writer_agent", requirements, "individual_test_writing")
+        result = await run_team_member("test_writer_agent", requirements)
         results.append(TeamMemberResult(
             team_member=TeamMember.test_writer,
             output=str(result),
@@ -74,7 +74,7 @@ async def run_individual_workflow(requirements: str, step_type: str) -> List[Tea
         ))
         
     elif step_type == "implementation":
-        result = await run_team_member_with_tracking("coder_agent", requirements, "individual_implementation")
+        result = await run_team_member("coder_agent", requirements)
         results.append(TeamMemberResult(
             team_member=TeamMember.coder,
             output=str(result),
@@ -82,7 +82,7 @@ async def run_individual_workflow(requirements: str, step_type: str) -> List[Tea
         ))
         
     elif step_type == "review":
-        result = await run_team_member_with_tracking("reviewer_agent", requirements, "individual_review")
+        result = await run_team_member("reviewer_agent", requirements)
         results.append(TeamMemberResult(
             team_member=TeamMember.reviewer,
             output=str(result),
@@ -101,7 +101,7 @@ Execute the following code:
 {requirements}
 """
         
-        result = await run_team_member_with_tracking("executor_agent", execution_input, "individual_execution")
+        result = await run_team_member("executor_agent", execution_input)
         results.append(TeamMemberResult(
             team_member=TeamMember.executor,
             output=str(result),
