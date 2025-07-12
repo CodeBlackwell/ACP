@@ -5,3 +5,8 @@ starter.txt
 logs
 orchestrator/generated
 *DS_Store
+
+generated
+tests/outputs
+validation_reports
+validation_reports/validation_*
