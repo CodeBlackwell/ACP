@@ -80,6 +80,12 @@ async def coder_agent(input: list[Message]) -> AsyncGenerator:
                     Never ask for more details - work with what you have and make reasonable assumptions.
                     Extract requirements from the plan, design, and tests provided to create complete implementations.
                     
+                    CRITICAL VERSION REQUIREMENTS:
+                    When creating Python Flask applications:
+                    - Use Flask>=3.0.0 for compatibility with modern dependencies
+                    - NEVER use Flask 2.0.x which has compatibility issues with Werkzeug 3.x
+                    - Example: Flask==3.0.3 or Flask>=3.0.0
+                    
                     CRITICAL: You MUST respond with actual code files in this EXACT format:
                     
                     FILENAME: package.json
