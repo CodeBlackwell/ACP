@@ -1,0 +1,44 @@
+{
+  "session_id": "validation_validation_1752352820_20250712_134020",
+  "timestamp": "2025-07-12T13:40:20.621433",
+  "validation_result": {
+    "success": false,
+    "project_type": "node",
+    "duration_seconds": 2.692012071609497,
+    "port_listening": null,
+    "health_check_passed": false,
+    "recommendations": [
+      "Fix dependency installation errors"
+    ]
+  },
+  "logs": {
+    "installation": "STDOUT:\n\n\nSTDERR:\nnpm error code EJSONPARSE\nnpm error path /private/var/folders/fr/nnbl56_n5ds0h_slfvpqyxrw0000gn/T/tmpsfb0f83s/package.json\nnpm error JSON.parse Unexpected token \"`\" (0x60), \"```json\nnpm error JSON.parse {\nnpm error JSON.parse \"... is not valid JSON while parsing '```json\nnpm error JSON.parse {\nnpm error JSON.parse   \"name\": \"simple-express-serv'\nnpm error JSON.parse Failed to parse JSON data.\nnpm error JSON.parse Note: package.json must be actual JSON, not just JavaScript.\nnpm error A complete log of this run can be found in: /Users/lechristopherblackwell/.npm/_logs/2025-07-12T20_40_18_126Z-debug-0.log\n",
+    "execution": "",
+    "errors": "node:internal/modules/run_main:74\n  const type = getNearestParentPackageJSONType(mainPath);\n               ^\n\nError: Invalid package config /private/var/folders/fr/nnbl56_n5ds0h_slfvpqyxrw0000gn/T/tmpsfb0f83s/package.json.\n    at shouldUseESMLoader (node:internal/modules/run_main:74:16)\n    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:145:20)\n    at node:internal/main/run_main_module:33:47 {\n  code: 'ERR_INVALID_PACKAGE_CONFIG'\n}\n\nNode.js v24.3.0\n"
+  },
+  "workflow_summary": {
+    "total_agents": 4,
+    "agents": [
+      {
+        "name": "planner",
+        "output_length": 2123,
+        "output_preview": "\n\n# Project Overview\nThe goal of this project is to create a simple Node.js web server using the Express framework. The server will have two endpoints: a root endpoint that returns \"Hello World\" and a..."
+      },
+      {
+        "name": "designer",
+        "output_length": 2409,
+        "output_preview": "\n\n# System Architecture Overview\nThe system will consist of a single Node.js application using the Express framework. It will have two main endpoints: a root endpoint (`/`) that returns a simple text ..."
+      },
+      {
+        "name": "coder",
+        "output_length": 1852,
+        "output_preview": "\n\u2705 PROJECT CREATED: app_generated_20250712_134015\n\ud83d\udcc1 Location: /Users/lechristopherblackwell/Desktop/Ground_up/rebuild/generated/app_generated_20250712_134015\n\ud83d\udcc4 Files created: 5\n\ud83d\udd50 Generated: 2025-07-12..."
+      },
+      {
+        "name": "reviewer",
+        "output_length": 754,
+        "output_preview": "\n\n### Code Quality\n- The implementation meets the requirements by creating a simple Express server with the specified endpoints.\n- The code is clean and well-structured, adhering to the single-file ar..."
+      }
+    ]
+  }
+}

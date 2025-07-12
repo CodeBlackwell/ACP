@@ -6,6 +6,7 @@ import asyncio
 import traceback
 import importlib
 import sys
+import time
 
 # Import verification function
 def verify_imports():
@@ -53,13 +54,17 @@ from shared.data_models import (
     TeamMember, 
     TeamMemberResult, 
     WorkflowStep, 
-    CodingTeamInput
+    CodingTeamInput,
+    ValidationResult
 )
 
 # Import workflow implementations
 from workflows.tdd.tdd_workflow import execute_tdd_workflow
 from workflows.full.full_workflow import execute_full_workflow
 from workflows.individual.individual_workflow import execute_individual_workflow
+
+# Import validation components
+from agents.validator import AppRunnerAgent, ValidationReportGenerator
 
 
 async def execute_workflow(input_data: CodingTeamInput) -> List[TeamMemberResult]:
@@ -171,6 +176,11 @@ async def execute_workflow(input_data: CodingTeamInput) -> List[TeamMemberResult
                 ))
         
         print(f"DEBUG: Processed {len(validated_results)} validated results")
+        
+        # Run validation if requested
+        if input_data.validate_output:
+            print("\n===== POST-WORKFLOW VALIDATION =====")
+            validated_results = await _run_validation(validated_results, input_data)
         
         print(f"DEBUG: Returning {len(validated_results)} validated results")
         return validated_results
@@ -301,3 +311,139 @@ def validate_workflow_input(input_data: CodingTeamInput) -> Tuple[bool, Optional
                 return False, f"Invalid team member: {member}. Must be a TeamMember enum"
     
     return True, None
+
+
+async def _run_validation(results: List[TeamMemberResult], 
+                         input_data: CodingTeamInput) -> List[TeamMemberResult]:
+    """
+    Run post-workflow validation on generated code.
+    
+    Args:
+        results: Workflow results containing generated code
+        input_data: Original input data with validation config
+        
+    Returns:
+        Updated results with validation report appended
+    """
+    print("Starting post-workflow validation...")
+    
+    try:
+        # Extract generated files from results
+        generated_files = _extract_generated_files(results)
+        
+        if not generated_files:
+            print("No generated files found to validate")
+            return results
+        
+        print(f"Found {len(generated_files)} files to validate")
+        
+        # Run validation
+        runner = AppRunnerAgent(
+            timeout=input_data.validation_config.get('timeout', 60) 
+            if input_data.validation_config else 60
+        )
+        
+        validation_result = await runner.validate_application(
+            generated_files,
+            input_data.validation_config
+        )
+        
+        # Generate report
+        session_id = f"validation_{int(time.time())}"
+        report_gen = ValidationReportGenerator()
+        reports = report_gen.generate_report(
+            validation_result,
+            results,
+            session_id
+        )
+        
+        print(f"Validation {'PASSED' if validation_result.success else 'FAILED'}")
+        print(f"Reports generated: {', '.join(reports.values())}")
+        
+        # Add validation result to results
+        validation_output = f"""
+VALIDATION REPORT
+================
+
+Status: {'✅ SUCCESS' if validation_result.success else '❌ FAILED'}
+Project Type: {validation_result.project_type}
+Duration: {validation_result.duration_seconds:.2f} seconds
+Port: {validation_result.port_listening or 'Not detected'}
+Health Check: {'✅ Passed' if validation_result.health_check_passed else '❌ Failed'}
+
+Recommendations:
+{chr(10).join('- ' + rec for rec in validation_result.recommendations)}
+
+Reports saved to:
+{chr(10).join(f'- {k}: {v}' for k, v in reports.items())}
+"""
+        
+        # Create validation result as TeamMemberResult
+        validation_member_result = TeamMemberResult(
+            team_member=TeamMember.executor,
+            output=validation_output,
+            name="validator"
+        )
+        
+        results.append(validation_member_result)
+        
+    except Exception as e:
+        print(f"Validation error: {str(e)}")
+        error_result = TeamMemberResult(
+            team_member=TeamMember.executor,
+            output=f"Validation failed with error: {str(e)}",
+            name="validator"
+        )
+        results.append(error_result)
+    
+    return results
+
+
+def _extract_generated_files(results: List[TeamMemberResult]) -> Dict[str, str]:
+    """Extract generated files from workflow results"""
+    files = {}
+    
+    for result in results:
+        # Look for FILENAME: patterns in output
+        lines = result.output.split('\n')
+        current_file = None
+        current_content = []
+        in_code_block = False
+        code_block_lang = None
+        
+        for line in lines:
+            if line.strip().startswith('FILENAME:'):
+                # Save previous file if any
+                if current_file and current_content:
+                    # Clean up content - remove empty lines at start/end
+                    content = '\n'.join(current_content)
+                    content = content.strip()
+                    files[current_file] = content
+                
+                # Start new file
+                current_file = line.split('FILENAME:', 1)[1].strip()
+                current_content = []
+                in_code_block = False
+                code_block_lang = None
+            elif current_file:
+                # Check for code block markers
+                if line.strip().startswith('```'):
+                    if not in_code_block:
+                        # Starting a code block
+                        in_code_block = True
+                        code_block_lang = line.strip()[3:]
+                    else:
+                        # Ending a code block
+                        in_code_block = False
+                        code_block_lang = None
+                else:
+                    # Only accumulate content that's not the code block markers
+                    current_content.append(line)
+        
+        # Save last file if any
+        if current_file and current_content:
+            content = '\n'.join(current_content)
+            content = content.strip()
+            files[current_file] = content
+    
+    return files

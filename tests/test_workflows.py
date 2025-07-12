@@ -123,6 +123,8 @@ class TestObservations:
     retry_patterns: Dict[str, Any] = field(default_factory=dict)
     performance_patterns: Dict[str, Any] = field(default_factory=dict)
     notable_events: List[str] = field(default_factory=list)
+    validation_result: Optional[Dict[str, Any]] = None
+    generated_app_path: Optional[str] = None
 
 
 @dataclass
@@ -250,7 +252,8 @@ class ModernWorkflowTester:
     async def run_test(self, 
                       workflow_type: str, 
                       scenario: TestScenario,
-                      save_artifacts: bool = True) -> TestResult:
+                      save_artifacts: bool = True,
+                      validate_output: bool = False) -> TestResult:
         """
         Run a single test with comprehensive monitoring and observation.
         """
@@ -281,7 +284,12 @@ class ModernWorkflowTester:
                 requirements=scenario.requirements,
                 workflow_type=workflow_type,
                 max_retries=3,
-                timeout_seconds=scenario.timeout
+                timeout_seconds=scenario.timeout,
+                validate_output=validate_output,
+                validation_config={
+                    "timeout": 60,
+                    "port_check": True
+                } if validate_output else None
             )
             
             # Validate input
@@ -314,6 +322,10 @@ class ModernWorkflowTester:
             
             # Make observations about the execution
             self._observe_execution(result)
+            
+            # Extract validation results if validation was enabled
+            if validate_output:
+                self._extract_validation_results(result)
             
             # Mark as successful
             result.status = "success"
@@ -504,10 +516,64 @@ class ModernWorkflowTester:
         print(f"   • Total Output: {result.metrics.total_output_size:,} characters")
         print(f"   • Average per Agent: {result.metrics.total_output_size // len(result.observations.agents_involved):,} characters")
         
+        # Validation results if available
+        if result.observations.validation_result:
+            print(f"\n🚀 Validation Results:")
+            val = result.observations.validation_result
+            print(f"   • Status: {'✅ SUCCESS' if val['success'] else '❌ FAILED'}")
+            if val.get('project_type'):
+                print(f"   • Project Type: {val['project_type']}")
+            if val.get('port'):
+                print(f"   • Port Detected: {val['port']}")
+            if val.get('duration'):
+                print(f"   • Validation Duration: {val['duration']}")
+            print(f"   • Health Check: {'✅ Passed' if val.get('health_check') else '❌ Failed'}")
+        
         if result.error_message:
             print(f"\n❌ Error: {result.error_message}")
         
         print("\n" + "═" * 70)
+    
+    def _extract_validation_results(self, result: TestResult):
+        """Extract validation results and generated app path from agent outputs"""
+        print("🔍 Extracting validation results...")
+        
+        # Look for validator output
+        for agent_result in result.agent_results:
+            if agent_result.name == "validator":
+                # Parse validation report
+                output = agent_result.output
+                result.observations.validation_result = {
+                    "success": "✅ SUCCESS" in output,
+                    "project_type": self._extract_value(output, "Project Type: "),
+                    "port": self._extract_value(output, "Port: "),
+                    "duration": self._extract_value(output, "Duration: "),
+                    "health_check": "✅ Passed" in output
+                }
+                print(f"   ✅ Found validation result: {'SUCCESS' if result.observations.validation_result['success'] else 'FAILED'}")
+                break
+        
+        # Look for generated app path in coder output
+        for agent_result in result.agent_results:
+            if agent_result.name == "coder":
+                output = agent_result.output
+                # Extract path from patterns like "Location: /path/to/generated/app"
+                import re
+                path_match = re.search(r'Location: (.+?)(?:\n|$)', output)
+                if path_match:
+                    result.observations.generated_app_path = path_match.group(1).strip()
+                    print(f"   📁 Generated app path: {result.observations.generated_app_path}")
+                break
+    
+    def _extract_value(self, text: str, prefix: str) -> Optional[str]:
+        """Extract value after a prefix in text"""
+        if prefix in text:
+            start = text.find(prefix) + len(prefix)
+            end = text.find('\n', start)
+            if end == -1:
+                end = len(text)
+            return text[start:end].strip()
+        return None
     
     async def _save_test_artifacts(self, result: TestResult):
         """Save comprehensive test artifacts"""
@@ -537,7 +603,9 @@ class ModernWorkflowTester:
                     "review_patterns": result.observations.review_patterns,
                     "retry_patterns": result.observations.retry_patterns,
                     "performance_patterns": result.observations.performance_patterns,
-                    "notable_events": result.observations.notable_events
+                    "notable_events": result.observations.notable_events,
+                    "validation_result": result.observations.validation_result,
+                    "generated_app_path": result.observations.generated_app_path
                 },
                 "metrics": {
                     "total_steps": result.metrics.total_steps,
@@ -568,10 +636,39 @@ class ModernWorkflowTester:
                 f.write(agent_result.output)
         
         print(f"   ✅ Artifacts saved to: {test_dir.relative_to(self.output_dir)}")
+        
+        # If validation was run and we have the generated app path, copy validation report there
+        if result.observations.validation_result and result.observations.generated_app_path:
+            try:
+                import shutil
+                gen_app_path = Path(result.observations.generated_app_path)
+                if gen_app_path.exists():
+                    # Copy validation report to generated app directory
+                    validation_report_src = test_dir / "test_observations.json"
+                    validation_report_dst = gen_app_path / "validation_report.json"
+                    
+                    # Create a focused validation report
+                    validation_data = {
+                        "test_id": result.test_id,
+                        "test_scenario": result.scenario.name,
+                        "workflow_type": result.workflow_type,
+                        "validation_result": result.observations.validation_result,
+                        "test_status": result.status,
+                        "test_duration": result.metrics.duration,
+                        "timestamp": datetime.now().isoformat()
+                    }
+                    
+                    with open(validation_report_dst, 'w') as f:
+                        json.dump(validation_data, f, indent=2)
+                    
+                    print(f"   📋 Validation report saved to generated app: {validation_report_dst.name}")
+            except Exception as e:
+                print(f"   ⚠️  Could not save validation report to app directory: {e}")
     
     async def run_workflow_suite(self, 
                                workflow_type: str,
-                               complexities: Optional[List[TestComplexity]] = None):
+                               complexities: Optional[List[TestComplexity]] = None,
+                               validate_output: bool = False):
         """Run a complete test suite for a workflow type"""
         print(f"\n{'━' * 80}")
         print(f"🔬 TESTING WORKFLOW: {workflow_type.upper()}")
@@ -591,7 +688,7 @@ class ModernWorkflowTester:
                 print(f"⏭️  Skipping {complexity.value} test for {workflow_type} (not applicable)")
                 continue
             
-            result = await self.run_test(workflow_type, scenario)
+            result = await self.run_test(workflow_type, scenario, validate_output=validate_output)
             suite_results.append(result)
             
             # Brief pause between tests
@@ -599,7 +696,7 @@ class ModernWorkflowTester:
         
         return suite_results
     
-    async def run_comprehensive_test_suite(self, complexities=None):
+    async def run_comprehensive_test_suite(self, complexities=None, validate_output=False):
         """Run comprehensive test suite across all workflows"""
         print("\n" + "🌟" * 40)
         print("🎯 STARTING COMPREHENSIVE TEST SUITE")
@@ -628,7 +725,7 @@ class ModernWorkflowTester:
         all_results = []
         
         for workflow_type, test_complexities in test_plan:
-            results = await self.run_workflow_suite(workflow_type, test_complexities)
+            results = await self.run_workflow_suite(workflow_type, test_complexities, validate_output)
             all_results.extend(results)
         
         # Generate final report
@@ -770,6 +867,10 @@ async def main():
     parser.add_argument('--save-artifacts', '-s', action='store_true', default=True,
                        help='Save test artifacts (default: True)')
     
+    # Option to validate generated applications
+    parser.add_argument('--validate', '-v', action='store_true',
+                       help='Validate generated applications by attempting to run them')
+    
     # Parse arguments
     args = parser.parse_args()
     
@@ -796,10 +897,10 @@ async def main():
     try:
         if args.workflow == 'all':
             # Run the comprehensive test suite with filter on complexity
-            await tester.run_comprehensive_test_suite(complexities)
+            await tester.run_comprehensive_test_suite(complexities, validate_output=args.validate)
         else:
             # Run specific workflow tests
-            await tester.run_workflow_suite(args.workflow, complexities)
+            await tester.run_workflow_suite(args.workflow, complexities, validate_output=args.validate)
         
     except KeyboardInterrupt:
         print("\n\n⚠️  Test execution interrupted by user")

@@ -1,0 +1,51 @@
+{
+  "test_id": "full_standard_1752353605",
+  "scenario": {
+    "name": "TODO List API : In Python",
+    "complexity": "standard",
+    "requirements": "Create a complete TODO list REST API with the following endpoints:\n        - GET /todos - List all todos\n        - POST /todos - Create a new todo\n        - GET /todos/:id - Get a specific todo\n        - PUT /todos/:id - Update a todo\n        - DELETE /todos/:id - Delete a todo\n        Include proper error handling and validation. \n        **Only Use Python**"
+  },
+  "workflow_type": "full",
+  "status": "success",
+  "duration": 38.73511290550232,
+  "observations": {
+    "agents_involved": [
+      "planner",
+      "designer",
+      "coder",
+      "reviewer",
+      "validator"
+    ],
+    "agent_interaction_sequence": [],
+    "review_patterns": {},
+    "retry_patterns": {},
+    "performance_patterns": {},
+    "notable_events": [],
+    "validation_result": {
+      "success": false,
+      "project_type": "python",
+      "port": "Not detected",
+      "duration": "4.93 seconds",
+      "health_check": false
+    },
+    "generated_app_path": "/Users/lechristopherblackwell/Desktop/Ground_up/rebuild/generated/todo_api_generated_20250712_135356"
+  },
+  "metrics": {
+    "total_steps": 0,
+    "completed_steps": 0,
+    "success_rate": 0.0,
+    "total_reviews": 0,
+    "review_approval_rate": 0.0,
+    "total_retries": 0,
+    "total_output_size": 14173,
+    "output_by_agent": {
+      "planner": 2659,
+      "designer": 4682,
+      "coder": 5348,
+      "reviewer": 1087,
+      "validator": 397
+    },
+    "agent_timings": {}
+  },
+  "error": null
+}

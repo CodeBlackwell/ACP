@@ -59,6 +59,8 @@ class CodingTeamInput:
     team_members: List[TeamMember] = field(default_factory=list)
     max_retries: int = 3
     timeout_seconds: int = 300
+    validate_output: bool = False  # Enable post-workflow validation
+    validation_config: Optional[Dict[str, Any]] = None  # Validation configuration
     
     def __post_init__(self):
         # Handle backward compatibility between workflow and workflow_type
@@ -109,3 +111,18 @@ class CodingTeamResult:
 class CodingTeamOutput:
     """Output wrapper for coding team results"""
     result: CodingTeamResult
+
+
+@dataclass
+class ValidationResult:
+    """Result from post-workflow validation"""
+    success: bool
+    project_type: str  # e.g., "node", "python", "rust"
+    installation_log: str
+    execution_log: str
+    error_log: Optional[str] = None
+    port_listening: Optional[int] = None
+    health_check_passed: bool = False
+    recommendations: List[str] = field(default_factory=list)
+    duration_seconds: float = 0.0
+    environment_path: Optional[str] = None

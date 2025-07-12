@@ -1,0 +1,20 @@
+AGENT: validator
+============================================================
+
+
+VALIDATION REPORT
+================
+
+Status: ❌ FAILED
+Project Type: python
+Duration: 4.93 seconds
+Port: Not detected
+Health Check: ❌ Failed
+
+Recommendations:
+
+
+Reports saved to:
+- json: ./validation_reports/validation_validation_1752353644_20250712_135404.json
+- markdown: ./validation_reports/validation_validation_1752353644_20250712_135404.md
+- csv: ./validation_reports/validation_summary.csv

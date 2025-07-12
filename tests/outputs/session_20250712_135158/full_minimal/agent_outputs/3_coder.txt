@@ -1,0 +1,85 @@
+AGENT: coder
+============================================================
+
+
+✅ PROJECT CREATED: app_generated_20250712_135213
+📁 Location: /Users/lechristopherblackwell/Desktop/Ground_up/rebuild/generated/app_generated_20250712_135213
+📄 Files created: 4
+🕐 Generated: 2025-07-12 13:52:13
+
+Files:
+  - requirements.txt
+  - app.py
+  - README.md
+  - test_app.py
+
+--- IMPLEMENTATION DETAILS ---
+FILENAME: requirements.txt
+```plaintext
+Flask==2.0.1
+```
+
+FILENAME: app.py
+```python
+from flask import Flask, jsonify
+
+app = Flask(__name__)
+
+@app.route('/hello', methods=['GET'])
+def hello():
+    return jsonify({"message": "Hello World"})
+
+if __name__ == '__main__':
+    app.run(debug=True)
+```
+
+FILENAME: README.md
+```markdown
+# Hello World API
+
+## Setup Instructions
+
+1. Ensure you have Python installed on your machine.
+2. Create a virtual environment (optional but recommended):
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # On Windows use `venv\Scripts\activate`
+   ```
+3. Install the required packages:
+   ```bash
+   pip install -r requirements.txt
+   ```
+4. Run the application:
+   ```bash
+   python app.py
+   ```
+5. Test the API endpoint by navigating to `http://127.0.0.1:5000/hello` in your browser or using Postman/curl.
+
+## Testing the API
+
+You can test the API by sending a GET request to the `/hello` endpoint. You should receive a JSON response:
+```json
+{
+  "message": "Hello World"
+}
+```
+```
+
+FILENAME: test_app.py
+```python
+import unittest
+from app import app
+
+class HelloWorldTestCase(unittest.TestCase):
+    def setUp(self):
+        self.app = app.test_client()
+        self.app.testing = True
+
+    def test_hello(self):
+        response = self.app.get('/hello')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json, {"message": "Hello World"})
+
+if __name__ == '__main__':
+    unittest.main()
+```

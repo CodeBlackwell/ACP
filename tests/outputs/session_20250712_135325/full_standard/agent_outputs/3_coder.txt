@@ -1,0 +1,233 @@
+AGENT: coder
+============================================================
+
+
+✅ PROJECT CREATED: todo_api_generated_20250712_135356
+📁 Location: /Users/lechristopherblackwell/Desktop/Ground_up/rebuild/generated/todo_api_generated_20250712_135356
+📄 Files created: 11
+🕐 Generated: 2025-07-12 13:53:56
+
+Files:
+  - requirements.txt
+  - app.py
+  - models/todo.py
+  - routes/todo_routes.py
+  - controllers/todo_controller.py
+  - schemas/todo_schema.py
+  - error_handlers.py
+  - tests/test_todo.py
+  - docs/api_documentation.md
+  - Dockerfile
+  - docker-compose.yml
+
+--- IMPLEMENTATION DETAILS ---
+
+
+FILENAME: requirements.txt
+```plaintext
+Flask
+Flask-SQLAlchemy
+Flask-Marshmallow
+marshmallow-sqlalchemy
+```
+
+FILENAME: app.py
+```python
+from flask import Flask
+from flask_sqlalchemy import SQLAlchemy
+from models.todo import Todo
+from routes.todo_routes import todo_bp
+
+app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///todos.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+db = SQLAlchemy(app)
+
+app.register_blueprint(todo_bp)
+
+if __name__ == '__main__':
+    db.create_all()
+    app.run(debug=True)
+```
+
+FILENAME: models/todo.py
+```python
+from sqlalchemy import Column, Integer, String, Boolean
+from app import db
+
+class Todo(db.Model):
+    __tablename__ = 'todos'
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    title = Column(String, nullable=False)
+    description = Column(String, nullable=True)
+    completed = Column(Boolean, default=False)
+```
+
+FILENAME: routes/todo_routes.py
+```python
+from flask import Blueprint, request, jsonify
+from controllers.todo_controller import TodoController
+
+todo_bp = Blueprint('todos', __name__)
+controller = TodoController()
+
+@todo_bp.route('/todos', methods=['GET'])
+def get_todos():
+    return controller.get_all_todos()
+
+@todo_bp.route('/todos', methods=['POST'])
+def create_todo():
+    return controller.create_todo()
+
+@todo_bp.route('/todos/<int:id>', methods=['GET'])
+def get_todo(id):
+    return controller.get_todo_by_id(id)
+
+@todo_bp.route('/todos/<int:id>', methods=['PUT'])
+def update_todo(id):
+    return controller.update_todo(id)
+
+@todo_bp.route('/todos/<int:id>', methods=['DELETE'])
+def delete_todo(id):
+    return controller.delete_todo(id)
+```
+
+FILENAME: controllers/todo_controller.py
+```python
+from flask import jsonify, request
+from models.todo import Todo
+from app import db
+
+class TodoController:
+    def get_all_todos(self):
+        todos = Todo.query.all()
+        return jsonify([todo.to_dict() for todo in todos])
+
+    def create_todo(self):
+        data = request.get_json()
+        new_todo = Todo(title=data['title'], description=data.get('description'))
+        db.session.add(new_todo)
+        db.session.commit()
+        return jsonify(new_todo.to_dict()), 201
+
+    def get_todo_by_id(self, id):
+        todo = Todo.query.get_or_404(id)
+        return jsonify(todo.to_dict())
+
+    def update_todo(self, id):
+        todo = Todo.query.get_or_404(id)
+        data = request.get_json()
+        todo.title = data['title']
+        todo.description = data.get('description')
+        todo.completed = data.get('completed', todo.completed)
+        db.session.commit()
+        return jsonify(todo.to_dict())
+
+    def delete_todo(self, id):
+        todo = Todo.query.get_or_404(id)
+        db.session.delete(todo)
+        db.session.commit()
+        return jsonify({"message": "Todo deleted successfully."})
+```
+
+FILENAME: schemas/todo_schema.py
+```python
+from marshmallow import Schema, fields
+
+class TodoSchema(Schema):
+    id = fields.Int(dump_only=True)
+    title = fields.Str(required=True)
+    description = fields.Str(allow_none=True)
+    completed = fields.Bool(default=False)
+```
+
+FILENAME: error_handlers.py
+```python
+from flask import jsonify
+
+def handle_not_found(error):
+    return jsonify({"error": "Resource not found"}), 404
+
+def handle_bad_request(error):
+    return jsonify({"error": "Bad request"}), 400
+```
+
+FILENAME: tests/test_todo.py
+```python
+import unittest
+from app import app, db
+
+class TodoTestCase(unittest.TestCase):
+    def setUp(self):
+        self.app = app.test_client()
+        app.config['TESTING'] = True
+        app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:'
+        db.create_all()
+
+    def tearDown(self):
+        db.session.remove()
+        db.drop_all()
+
+    def test_create_todo(self):
+        response = self.app.post('/todos', json={'title': 'Test Todo'})
+        self.assertEqual(response.status_code, 201)
+
+    def test_get_todos(self):
+        response = self.app.get('/todos')
+        self.assertEqual(response.status_code, 200)
+
+if __name__ == '__main__':
+    unittest.main()
+```
+
+FILENAME: docs/api_documentation.md
+```markdown
+# TODO List API Documentation
+
+## Endpoints
+
+### GET /todos
+- List all todos.
+
+### POST /todos
+- Create a new todo.
+- Request Body: JSON object with `title` and optional `description`.
+
+### GET /todos/:id
+- Get a specific todo by ID.
+
+### PUT /todos/:id
+- Update a todo by ID.
+- Request Body: JSON object with `title`, `description`, and `completed` status.
+
+### DELETE /todos/:id
+- Delete a todo by ID.
+```
+
+FILENAME: Dockerfile
+```dockerfile
+FROM python:3.9
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+
+COPY . .
+
+CMD ["python", "app.py"]
+```
+
+FILENAME: docker-compose.yml
+```yaml
+version: '3.8'
+
+services:
+  web:
+    build: .
+    ports:
+      - "5000:5000"
+    volumes:
+      - .:/app
+```

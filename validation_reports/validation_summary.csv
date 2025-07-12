@@ -1,0 +1,8 @@
+Session ID,Timestamp,Success,Project Type,Duration (s),Port,Health Check,Recommendations Count,Error
+validation_validation_1752352820_20250712_134020,2025-07-12T13:40:20.622264,False,node,2.69,,False,1,Yes
+validation_validation_1752352847_20250712_134047,2025-07-12T13:40:47.315569,False,python,3.03,,False,1,Yes
+validation_validation_1752352984_20250712_134304,2025-07-12T13:43:04.692170,True,node,9.10,3000,False,0,No
+validation_validation_1752353014_20250712_134334,2025-07-12T13:43:34.256624,False,python,3.60,,False,0,Yes
+validation_validation_1752353539_20250712_135219,2025-07-12T13:52:19.122590,False,python,3.14,,False,0,Yes
+validation_validation_1752353644_20250712_135404,2025-07-12T13:54:04.727800,False,python,4.93,,False,0,Yes
+validation_validation_1752353703_20250712_135503,2025-07-12T13:55:03.506428,False,python,3.63,,False,1,Yes

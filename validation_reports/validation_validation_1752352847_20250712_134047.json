@@ -1,0 +1,44 @@
+{
+  "session_id": "validation_validation_1752352847_20250712_134047",
+  "timestamp": "2025-07-12T13:40:47.314549",
+  "validation_result": {
+    "success": false,
+    "project_type": "python",
+    "duration_seconds": 3.0271430015563965,
+    "port_listening": null,
+    "health_check_passed": false,
+    "recommendations": [
+      "Fix dependency installation errors"
+    ]
+  },
+  "logs": {
+    "installation": "STDOUT:\n\n\nSTDERR:\nERROR: Invalid requirement: '```plaintext': Expected package name at the start of dependency specifier\n    ```plaintext\n    ^ (from line 1 of requirements.txt)\n",
+    "execution": "",
+    "errors": "  File \"/private/var/folders/fr/nnbl56_n5ds0h_slfvpqyxrw0000gn/T/tmp87qd0luk/app.py\", line 1\n    ```python\n    ^\nSyntaxError: invalid syntax\n"
+  },
+  "workflow_summary": {
+    "total_agents": 4,
+    "agents": [
+      {
+        "name": "planner",
+        "output_length": 2317,
+        "output_preview": "\n\n# Project Overview\nThe goal is to create a simple Python Flask web application that provides two endpoints: a root endpoint returning a JSON message and a /status endpoint returning the application'..."
+      },
+      {
+        "name": "designer",
+        "output_length": 2950,
+        "output_preview": "\n\n# System Architecture Overview\nThe application will be a simple Flask web application structured to handle two endpoints: a root endpoint and a status endpoint. It will run on port 5000 and include ..."
+      },
+      {
+        "name": "coder",
+        "output_length": 2663,
+        "output_preview": "\n\u2705 PROJECT CREATED: app_generated_20250712_134041\n\ud83d\udcc1 Location: /Users/lechristopherblackwell/Desktop/Ground_up/rebuild/generated/app_generated_20250712_134041\n\ud83d\udcc4 Files created: 4\n\ud83d\udd50 Generated: 2025-07-12..."
+      },
+      {
+        "name": "reviewer",
+        "output_length": 686,
+        "output_preview": "\n\n### Code Quality\n- The implementation is straightforward and adheres to the requirements. The use of Flask is appropriate for the task.\n- The code is well-structured, with clear separation of concer..."
+      }
+    ]
+  }
+}

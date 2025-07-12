@@ -1,0 +1,51 @@
+{
+  "test_id": "full_minimal_1752353681",
+  "scenario": {
+    "name": "Hello World API : In Python",
+    "complexity": "minimal",
+    "requirements": "Create a basic 'Hello World' REST API endpoint that returns a JSON response. **Only Use Python**"
+  },
+  "workflow_type": "full",
+  "status": "success",
+  "duration": 21.965226888656616,
+  "observations": {
+    "agents_involved": [
+      "planner",
+      "designer",
+      "coder",
+      "reviewer",
+      "validator"
+    ],
+    "agent_interaction_sequence": [],
+    "review_patterns": {},
+    "retry_patterns": {},
+    "performance_patterns": {},
+    "notable_events": [],
+    "validation_result": {
+      "success": false,
+      "project_type": "python",
+      "port": "Not detected",
+      "duration": "3.63 seconds",
+      "health_check": false
+    },
+    "generated_app_path": "/Users/lechristopherblackwell/Desktop/Ground_up/rebuild/generated/app_generated_20250712_135457"
+  },
+  "metrics": {
+    "total_steps": 0,
+    "completed_steps": 0,
+    "success_rate": 0.0,
+    "total_reviews": 0,
+    "review_approval_rate": 0.0,
+    "total_retries": 0,
+    "total_output_size": 7124,
+    "output_by_agent": {
+      "planner": 1982,
+      "designer": 2404,
+      "coder": 1475,
+      "reviewer": 830,
+      "validator": 433
+    },
+    "agent_timings": {}
+  },
+  "error": null
+}
