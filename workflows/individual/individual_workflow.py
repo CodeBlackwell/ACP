@@ -1,123 +1,114 @@
 """
-Individual workflow step implementation with comprehensive monitoring.
+Individual workflow step implementation.
 """
-from typing import List, Optional, Tuple
+from typing import List, Optional
 import asyncio
-from workflows.monitoring import WorkflowExecutionTracer, WorkflowExecutionReport
 from shared.data_models import (
     TeamMember, WorkflowStep, CodingTeamInput, CodingTeamResult, TeamMemberResult
 )
 # Import executor components
 from agents.executor.executor_agent import generate_session_id
 
-async def execute_individual_workflow(input_data: CodingTeamInput, tracer: Optional[WorkflowExecutionTracer] = None) -> Tuple[List[TeamMemberResult], WorkflowExecutionReport]:
+async def execute_individual_workflow(input_data: CodingTeamInput) -> List[TeamMemberResult]:
     """
-    Execute an individual workflow step with comprehensive monitoring.
+    Execute an individual workflow step.
     
     Args:
         input_data: The input data containing requirements and workflow configuration
-        tracer: Optional tracer for monitoring execution (creates new one if not provided)
         
     Returns:
-        Tuple of (team member results, execution report)
+        List of team member results
     """
-    # Create tracer if not provided
-    if tracer is None:
-        tracer = WorkflowExecutionTracer(
-            workflow_type="Individual",
-            execution_id=f"individual_{int(asyncio.get_event_loop().time())}"
-        )
-    
     # Extract workflow step from input data
     workflow_step = input_data.step_type or input_data.workflow_type or "planning"
     
-    # The tracer is already initialized by workflow_manager
-    
     try:
         # Execute the workflow
-        results = await run_individual_workflow(input_data.requirements, workflow_step, tracer)
-        
-        # Complete workflow execution
-        tracer.complete_execution(final_output={
-            "workflow": "Individual",
-            "step": workflow_step,
-            "results_count": len(results),
-            "success": True
-        })
+        results = await run_individual_workflow(input_data.requirements, workflow_step)
+        return results
     except Exception as e:
-        # Handle exceptions and complete workflow with error
+        # Handle exceptions
         error_msg = f"Individual workflow error: {str(e)}"
-        tracer.complete_execution(error=error_msg)
+        print(f"ERROR: {error_msg}")
         raise
-    
-    # Return results and execution report
-    return results, tracer.get_report()
 
 
-async def run_individual_workflow(requirements: str, workflow_step: str, tracer: WorkflowExecutionTracer) -> List[TeamMemberResult]:
+async def run_individual_workflow(requirements: str, step_type: str) -> List[TeamMemberResult]:
     """
-    Run a specific workflow step
+    Run a single workflow step.
     
     Args:
         requirements: The project requirements
-        workflow_step: The specific workflow step to execute
-        tracer: Workflow execution tracer
+        step_type: The type of step to run
         
     Returns:
-        List of team member results (containing single result)
+        List of team member results
     """
     # Import run_team_member dynamically to avoid circular imports
     from orchestrator.orchestrator_agent import run_team_member_with_tracking
     
     results = []
     
-    agent_map = {
-        "planning": ("planner_agent", TeamMember.planner, "planner"),
-        "design": ("designer_agent", TeamMember.designer, "designer"),
-        "test_writing": ("test_writer_agent", TeamMember.test_writer, "test_writer"),
-        "implementation": ("coder_agent", TeamMember.coder, "coder"),
-        "review": ("reviewer_agent", TeamMember.reviewer, "reviewer"),
-        "execution": ("executor_agent", TeamMember.executor, "executor")
-    }
-    
-    if workflow_step in agent_map:
-        agent_name, team_member, result_name = agent_map[workflow_step]
+    if step_type == "planning":
+        result = await run_team_member_with_tracking("planner_agent", requirements, "individual_planning")
+        results.append(TeamMemberResult(
+            team_member=TeamMember.planner,
+            output=str(result),
+            name="planner"
+        ))
         
-        print(f" Running {workflow_step} phase...")
+    elif step_type == "design":
+        result = await run_team_member_with_tracking("designer_agent", requirements, "individual_design")
+        results.append(TeamMemberResult(
+            team_member=TeamMember.designer,
+            output=str(result),
+            name="designer"
+        ))
         
-        # Start monitoring step
-        step_id = tracer.start_step(
-            step_name=workflow_step,
-            agent_name=agent_name,
-            input_data={
-                "requirements": requirements,
-                "workflow_type": "individual",
-                "step_type": workflow_step
-            }
-        )
+    elif step_type == "test_writing":
+        result = await run_team_member_with_tracking("test_writer_agent", requirements, "individual_test_writing")
+        results.append(TeamMemberResult(
+            team_member=TeamMember.test_writer,
+            output=str(result),
+            name="test_writer"
+        ))
         
-        try:
-            result = await run_team_member_with_tracking(agent_name, requirements, f"individual_{workflow_step}")
-            output = str(result)
-            
-            # Complete monitoring step
-            tracer.complete_step(step_id, {
-                "output": output[:200] + "...",
-                "step_completed": workflow_step,
-                "success": True
-            })
-            
-            results.append(TeamMemberResult(
-                team_member=team_member,
-                output=output,
-                name=result_name
-            ))
-            print(f" {workflow_step} phase completed successfully")
-            
-        except Exception as e:
-            error_msg = f"{workflow_step} step failed: {str(e)}"
-            tracer.complete_step(step_id, error=error_msg)
-            print(f" {workflow_step} failed: {error_msg}")
-            raise
+    elif step_type == "implementation":
+        result = await run_team_member_with_tracking("coder_agent", requirements, "individual_implementation")
+        results.append(TeamMemberResult(
+            team_member=TeamMember.coder,
+            output=str(result),
+            name="coder"
+        ))
+        
+    elif step_type == "review":
+        result = await run_team_member_with_tracking("reviewer_agent", requirements, "individual_review")
+        results.append(TeamMemberResult(
+            team_member=TeamMember.reviewer,
+            output=str(result),
+            name="reviewer"
+        ))
+        
+    elif step_type == "execution":
+        # Generate session ID for execution
+        session_id = generate_session_id()
+        
+        # Prepare execution input with session ID
+        execution_input = f"""SESSION_ID: {session_id}
+
+Execute the following code:
+
+{requirements}
+"""
+        
+        result = await run_team_member_with_tracking("executor_agent", execution_input, "individual_execution")
+        results.append(TeamMemberResult(
+            team_member=TeamMember.executor,
+            output=str(result),
+            name="executor"
+        ))
+        
+    else:
+        raise ValueError(f"Unknown step type: {step_type}")
     
     return results

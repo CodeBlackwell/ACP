@@ -3,7 +3,6 @@ Full workflow implementation with comprehensive monitoring.
 """
 from typing import List, Optional, Tuple
 import asyncio
-from workflows.monitoring import WorkflowExecutionTracer, WorkflowExecutionReport
 from shared.data_models import (
     TeamMember, WorkflowStep, CodingTeamInput, CodingTeamResult, TeamMemberResult
 )
@@ -12,57 +11,37 @@ from workflows.incremental.feature_orchestrator import run_incremental_coding_ph
 # Import executor components
 from agents.executor.executor_agent import generate_session_id
 
-async def execute_full_workflow(input_data: CodingTeamInput, tracer: Optional[WorkflowExecutionTracer] = None) -> Tuple[List[TeamMemberResult], WorkflowExecutionReport]:
+async def execute_full_workflow(input_data: CodingTeamInput) -> List[TeamMemberResult]:
     """
-    Execute the full workflow with comprehensive monitoring.
+    Execute the full workflow.
     
     Args:
         input_data: The input data containing requirements and workflow configuration
-        tracer: Optional tracer for monitoring execution (creates new one if not provided)
         
     Returns:
-        Tuple of (team member results, execution report)
+        List of team member results
     """
-    # Create tracer if not provided
-    if tracer is None:
-        tracer = WorkflowExecutionTracer(
-            workflow_type="Full",
-            execution_id=f"full_{int(asyncio.get_event_loop().time())}"
-        )
-    
-    # The tracer is already initialized by workflow_manager
-    
     try:
         # Execute the workflow - include executor if it's in input_data.team_members
         team_members = ["planner", "designer", "coder", "reviewer"]
-        if TeamMember.executor in input_data.team_members:
+        if hasattr(input_data, 'team_members') and input_data.team_members and TeamMember.executor in input_data.team_members:
             team_members.append("executor")
-        results = await run_full_workflow(input_data.requirements, team_members, tracer)
-        
-        # Complete workflow execution
-        tracer.complete_execution(final_output={
-            "workflow": "Full",
-            "results_count": len(results),
-            "success": True
-        })
+        results = await run_full_workflow(input_data.requirements, team_members)
+        return results
     except Exception as e:
-        # Handle exceptions and complete workflow with error
+        # Handle exceptions
         error_msg = f"Full workflow error: {str(e)}"
-        tracer.complete_execution(error=error_msg)
+        print(f"ERROR: {error_msg}")
         raise
-    
-    # Return results and execution report
-    return results, tracer.get_report()
 
 
-async def run_full_workflow(requirements: str, team_members: List[str], tracer: WorkflowExecutionTracer) -> List[TeamMemberResult]:
+async def run_full_workflow(requirements: str, team_members: List[str]) -> List[TeamMemberResult]:
     """
     Run full workflow: planner -> designer -> coder -> reviewer
     
     Args:
         requirements: The project requirements
         team_members: Team members to involve in the process
-        tracer: Workflow execution tracer
         
     Returns:
         List of team member results
@@ -83,12 +62,8 @@ async def run_full_workflow(requirements: str, team_members: List[str], tracer: 
     # Step 1: Planning
     if "planner" in team_members:
         print("📋 Planning phase...")
-        step_id = tracer.start_step("planning", "planner_agent", {"requirements": requirements})
-        
         planning_result = await run_team_member_with_tracking("planner_agent", requirements, "full_planning")
         plan_output = str(planning_result)
-        
-        tracer.complete_step(step_id, {"output": plan_output[:200] + "..."})
         results.append(TeamMemberResult(
             team_member=TeamMember.planner,
             output=plan_output,
@@ -99,23 +74,15 @@ async def run_full_workflow(requirements: str, team_members: List[str], tracer: 
         approved, feedback = await review_output(
             plan_output, 
             "planning", 
-            tracer=tracer,
             target_agent="planner_agent"
         )
         
         # Step 2: Design
         if "designer" in team_members:
             print("🎨 Design phase...")
-            step_id = tracer.start_step("design", "designer_agent", {
-                "plan_input": plan_output[:200] + "...",
-                "requirements": requirements
-            })
-            
             design_input = f"Plan:\n{plan_output}\n\nRequirements: {requirements}"
             design_result = await run_team_member_with_tracking("designer_agent", design_input, "full_design")
             design_output = str(design_result)
-            
-            tracer.complete_step(step_id, {"output": design_output[:200] + "..."})
             results.append(TeamMemberResult(
                 team_member=TeamMember.designer,
                 output=design_output,
@@ -126,18 +93,12 @@ async def run_full_workflow(requirements: str, team_members: List[str], tracer: 
             approved, feedback = await review_output(
                 design_output, 
                 "design", 
-                tracer=tracer,
                 target_agent="designer_agent"
             )
             
             # Step 3: Implementation
             if "coder" in team_members:
                 print("💻 Implementation phase...")
-                step_id = tracer.start_step("implementation", "incremental_coding", {
-                    "plan_input": plan_output[:200] + "...",
-                    "design_input": design_output[:200] + "...",
-                    "requirements": requirements
-                })
                 
                 # Use incremental feature orchestrator instead of direct coder_agent call
                 try:
@@ -145,23 +106,14 @@ async def run_full_workflow(requirements: str, team_members: List[str], tracer: 
                         designer_output=design_output,
                         requirements=requirements,
                         tests=None,  # No tests in full workflow
-                        tracer=tracer,
                         max_retries=3
                     )
                     
-                    # Add execution metrics to tracer
-                    tracer.add_metadata("incremental_execution_metrics", execution_metrics)
                     
                     # Log feature execution stats
                     print(f"✅ Completed {execution_metrics['completed_features']}/{execution_metrics['total_features']} features")
                     print(f"📊 Success rate: {execution_metrics['success_rate']:.1f}%")
                     
-                    # Add coder result to results list
-                    tracer.complete_step(step_id, {
-                        "output": code_output[:200] + "...",
-                        "features_completed": execution_metrics['completed_features'],
-                        "total_features": execution_metrics['total_features']
-                    })
                     
                     # The incremental orchestrator already returns a TeamMemberResult for the coder
                     # so we don't need to create one here, just add it to our results list
@@ -177,10 +129,6 @@ async def run_full_workflow(requirements: str, team_members: List[str], tracer: 
                         print("🐳 Executing code in Docker container...")
                         session_id = generate_session_id()
                         
-                        step_id = tracer.start_step("execution", "executor_agent", {
-                            "session_id": session_id,
-                            "code": code_output[:200] + "..."
-                        })
                         
                         # Prepare execution input with session ID
                         execution_input = f"""SESSION_ID: {session_id}
@@ -193,7 +141,6 @@ Execute the following code:
                         execution_result = await run_team_member_with_tracking("executor_agent", execution_input, "full_execution")
                         execution_output = str(execution_result)
                         
-                        tracer.complete_step(step_id, {"output": execution_output[:200] + "..."})
                         
                         # Add execution results to the results list
                         results.append(TeamMemberResult(
@@ -205,7 +152,6 @@ Execute the following code:
                 except Exception as e:
                     error_msg = f"Incremental coding phase error: {str(e)}"
                     print(f"❌ {error_msg}")
-                    tracer.complete_step(step_id, {"error": error_msg}, success=False)
                     # Fall back to standard coder implementation
                     print("⚠️ Falling back to standard implementation...")
                     
@@ -224,10 +170,6 @@ Execute the following code:
                         print("🐳 Executing code in Docker container (fallback path)...")
                         session_id = generate_session_id()
                         
-                        step_id = tracer.start_step("execution_fallback", "executor_agent", {
-                            "session_id": session_id,
-                            "code": code_output[:200] + "..."
-                        })
                         
                         # Prepare execution input with session ID
                         execution_input = f"""SESSION_ID: {session_id}
@@ -240,7 +182,6 @@ Execute the following code:
                         execution_result = await run_team_member_with_tracking("executor_agent", execution_input, "full_execution_fallback")
                         execution_output = str(execution_result)
                         
-                        tracer.complete_step(step_id, {"output": execution_output[:200] + "..."})
                         
                         # Add execution results to the results list
                         results.append(TeamMemberResult(
@@ -252,16 +193,9 @@ Execute the following code:
                 # Step 4: Final Review
                 if "reviewer" in team_members:
                     print("🔍 Final review phase...")
-                    step_id = tracer.start_step("final_review", "reviewer_agent", {
-                        "code_input": code_output[:200] + "...",
-                        "context": "Full workflow final review"
-                    })
-                    
                     review_input = f"Requirements: {requirements}\n\nPlan:\n{plan_output}\n\nDesign:\n{design_output}\n\nImplementation:\n{code_output}"
                     review_result = await run_team_member_with_tracking("reviewer_agent", review_input, "full_final_review")
                     review_result_output = str(review_result)
-                    
-                    tracer.complete_step(step_id, {"output": review_result_output[:200] + "..."})
                     results.append(TeamMemberResult(
                         team_member=TeamMember.reviewer,
                         output=review_result_output,

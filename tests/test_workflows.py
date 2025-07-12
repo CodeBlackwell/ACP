@@ -28,10 +28,7 @@ from shared.data_models import (
     TeamMember, WorkflowStep, CodingTeamInput, TeamMemberResult
 )
 from workflows import execute_workflow
-from workflows.monitoring import (
-    WorkflowExecutionTracer, WorkflowExecutionReport, 
-    StepStatus, ReviewDecision
-)
+# Monitoring imports removed - tracing disabled
 from workflows.workflow_manager import get_available_workflows, get_workflow_description
 
 
@@ -186,7 +183,7 @@ class TestResult:
     
     # Results
     agent_results: List[TeamMemberResult] = field(default_factory=list)
-    execution_report: Optional[WorkflowExecutionReport] = None
+    # execution_report removed - tracing disabled
     
     # Observations and metrics
     observations: TestObservations = field(default_factory=TestObservations)
@@ -297,7 +294,7 @@ class ModernWorkflowTester:
             start_exec = time.time()
             
             # Use timeout
-            agent_results, execution_report = await asyncio.wait_for(
+            agent_results = await asyncio.wait_for(
                 execute_workflow(input_data),
                 timeout=scenario.timeout
             )
@@ -307,10 +304,10 @@ class ModernWorkflowTester:
             
             # Store results
             result.agent_results = agent_results
-            result.execution_report = execution_report
+            # execution_report removed - tracing disabled
             
             # Extract metrics from execution report
-            self._extract_metrics(result, execution_report)
+            self._extract_metrics(result, None)
             
             # Make observations about the execution
             self._observe_execution(result)
@@ -344,40 +341,39 @@ class ModernWorkflowTester:
         
         return result
     
-    def _extract_metrics(self, result: TestResult, report: WorkflowExecutionReport):
+    def _extract_metrics(self, result: TestResult, report):
         """Extract metrics from execution report"""
-        if not report:
-            return
-        
         metrics = result.metrics
         
-        # Step metrics
-        metrics.total_steps = report.step_count
-        metrics.completed_steps = report.completed_steps
-        metrics.failed_steps = report.failed_steps
-        
-        # Review metrics
-        metrics.total_reviews = report.total_reviews
-        metrics.approved_reviews = report.approved_reviews
-        metrics.revision_requests = report.revision_requests
-        metrics.auto_approvals = report.auto_approvals
-        
-        # Retry metrics
-        metrics.total_retries = report.total_retries
-        for retry in report.retries:
-            metrics.retry_reasons.append(retry.reason)
-        
-        # Performance metrics
-        for agent, perf in report.agent_performance.items():
-            if 'average_duration' in perf:
-                metrics.agent_timings[agent] = perf['average_duration']
-        
-        # Output metrics
+        # Always extract output metrics from agent results
         for agent_result in result.agent_results:
             agent_name = agent_result.name or agent_result.team_member.value
             output_size = len(agent_result.output)
             metrics.output_by_agent[agent_name] = output_size
             metrics.total_output_size += output_size
+        
+        # Extract from report if available (currently disabled)
+        if report:
+            # Step metrics
+            metrics.total_steps = report.step_count
+            metrics.completed_steps = report.completed_steps
+            metrics.failed_steps = report.failed_steps
+            
+            # Review metrics
+            metrics.total_reviews = report.total_reviews
+            metrics.approved_reviews = report.approved_reviews
+            metrics.revision_requests = report.revision_requests
+            metrics.auto_approvals = report.auto_approvals
+            
+            # Retry metrics
+            metrics.total_retries = report.total_retries
+            for retry in report.retries:
+                metrics.retry_reasons.append(retry.reason)
+            
+            # Performance metrics
+            for agent, perf in report.agent_performance.items():
+                if 'average_duration' in perf:
+                    metrics.agent_timings[agent] = perf['average_duration']
     
     def _observe_execution(self, result: TestResult):
         """Make observations about the test execution"""
@@ -390,13 +386,7 @@ class ModernWorkflowTester:
         observations.agents_involved = actual_agents
         print(f"   👥 Agents involved: {', '.join(actual_agents)}")
         
-        # Observe agent interaction sequence
-        if result.execution_report and result.execution_report.steps:
-            interaction_sequence = []
-            for step in result.execution_report.steps:
-                interaction_sequence.append(step.agent_name)
-            observations.agent_interaction_sequence = interaction_sequence
-            print(f"   🔄 Interaction count: {len(interaction_sequence)}")
+        # Observe agent interaction sequence - disabled (tracing removed)
         
         # Observe review patterns
         if result.metrics.total_reviews > 0:
@@ -560,11 +550,7 @@ class ModernWorkflowTester:
                 "error": result.error_message
             }, f, indent=2)
         
-        # Save execution report
-        if result.execution_report:
-            report_file = test_dir / "execution_report.json"
-            with open(report_file, 'w') as f:
-                f.write(result.execution_report.to_json())
+        # Save execution report - disabled (tracing removed)
         
         # Save agent outputs
         outputs_dir = test_dir / "agent_outputs"

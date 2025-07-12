@@ -17,7 +17,6 @@ def verify_imports():
         "workflows.tdd.tdd_workflow": ["execute_tdd_workflow"],
         "workflows.full.full_workflow": ["execute_full_workflow"],
         "workflows.individual.individual_workflow": ["execute_individual_workflow"],
-        "workflows.monitoring": ["WorkflowExecutionTracer", "WorkflowExecutionReport"]
     }
     
     all_imports_successful = True
@@ -61,20 +60,17 @@ from shared.data_models import (
 from workflows.tdd.tdd_workflow import execute_tdd_workflow
 from workflows.full.full_workflow import execute_full_workflow
 from workflows.individual.individual_workflow import execute_individual_workflow
-from workflows.monitoring import WorkflowExecutionTracer, WorkflowExecutionReport
 
 
-async def execute_workflow(input_data: CodingTeamInput, 
-                          tracer: Optional[WorkflowExecutionTracer] = None) -> Tuple[List[TeamMemberResult], WorkflowExecutionReport]:
+async def execute_workflow(input_data: CodingTeamInput) -> List[TeamMemberResult]:
     """
-    Execute a workflow based on the specified type with comprehensive monitoring.
+    Execute a workflow based on the specified type.
     
     Args:
         input_data: The input data containing workflow type and requirements
-        tracer: Optional tracer for monitoring execution (creates new one if not provided)
         
     Returns:
-        Tuple of (team member results, execution report)
+        List of team member results
     """
     print("\n===== WORKFLOW DEBUG: Starting execute_workflow =====")
     print(f"Input data type: {type(input_data)}")
@@ -106,31 +102,6 @@ async def execute_workflow(input_data: CodingTeamInput,
     workflow_type = workflow_type.strip().lower()
     print(f"DEBUG: Normalized workflow type: {workflow_type}")
     
-    # Create tracer if not provided
-    if tracer is None:
-        print("DEBUG: Creating new tracer")
-        tracer = WorkflowExecutionTracer(workflow_type)
-    else:
-        print("DEBUG: Using provided tracer")
-    
-    # Add input metadata to tracer
-    print(f"DEBUG: Adding metadata to tracer")
-    tracer.add_metadata('input_requirements', input_data.requirements)
-    tracer.add_metadata('workflow_type', workflow_type)
-    
-    # Add team members if available
-    if hasattr(input_data, 'team_members') and input_data.team_members:
-        print(f"DEBUG: Processing team members: {input_data.team_members}")
-        team_member_names = []
-        for member in input_data.team_members:
-            if hasattr(member, 'name'):
-                team_member_names.append(member.name)
-            elif hasattr(member, 'value'):
-                team_member_names.append(member.value)
-            else:
-                team_member_names.append(str(member))
-        tracer.add_metadata('team_members', team_member_names)
-        print(f"DEBUG: Added team members to metadata: {team_member_names}")
     
     try:
         # Log workflow start
@@ -139,11 +110,11 @@ async def execute_workflow(input_data: CodingTeamInput,
         # Execute the appropriate workflow with monitoring
         if workflow_type == "tdd" or workflow_type == "tdd_workflow":
             print(f"DEBUG: Executing TDD workflow")
-            results = await execute_tdd_workflow(input_data, tracer)
+            results = await execute_tdd_workflow(input_data)
             print(f"DEBUG: TDD workflow completed, results type: {type(results)}")
         elif workflow_type == "full" or workflow_type == "full_workflow":
             print(f"DEBUG: Executing full workflow")
-            results = await execute_full_workflow(input_data, tracer)
+            results = await execute_full_workflow(input_data)
             print(f"DEBUG: Full workflow completed, results type: {type(results)}")
         elif workflow_type in ["individual", "planning", "design", "test_writing", "implementation", "review"]:
             # For individual workflows, set the step type if not already set
@@ -151,12 +122,11 @@ async def execute_workflow(input_data: CodingTeamInput,
                 print(f"DEBUG: Setting step_type to {workflow_type} for individual workflow")
                 input_data.step_type = workflow_type
             print(f"DEBUG: Executing individual workflow")
-            results = await execute_individual_workflow(input_data, tracer)
+            results = await execute_individual_workflow(input_data)
             print(f"DEBUG: Individual workflow completed, results type: {type(results)}")
         else:
             error_msg = f"Unknown workflow type: {workflow_type}. Valid types are: tdd, full, individual, planning, design, test_writing, implementation, review"
             print(f"ERROR: {error_msg}")
-            tracer.complete_execution(error=error_msg)
             raise ValueError(error_msg)
         
         print(f"DEBUG: Raw results: {results}")
@@ -202,32 +172,17 @@ async def execute_workflow(input_data: CodingTeamInput,
         
         print(f"DEBUG: Processed {len(validated_results)} validated results")
         
-        # Complete successful execution
-        final_output = {
-            'workflow_type': workflow_type,
-            'results_count': len(validated_results),
-            'team_members': [result.name for result in validated_results if hasattr(result, 'name')]
-        }
-        print(f"DEBUG: Final output metadata: {final_output}")
-        tracer.complete_execution(final_output=final_output)
-        
-        # Generate report
-        report = tracer.get_report()
-        print(f"DEBUG: Generated execution report")
-        
-        return validated_results, report
+        print(f"DEBUG: Returning {len(validated_results)} validated results")
+        return validated_results
         
     except asyncio.TimeoutError:
         error_msg = f"Workflow execution timed out for {workflow_type}"
         print(f" ERROR: {error_msg}")
-        tracer.complete_execution(error=error_msg)
         raise
         
     except Exception as e:
         print(f"ERROR in execute_workflow: {str(e)}")
         print(f"ERROR traceback: {traceback.format_exc()}")
-        if tracer:
-            tracer.complete_execution(error=str(e))
         raise
 
 
@@ -282,7 +237,7 @@ async def run_workflow(workflow_type: str, requirements: str,
     # Execute workflow
     print(f"DEBUG: Calling execute_workflow")
     try:
-        results, _ = await execute_workflow(input_data)
+        results = await execute_workflow(input_data)
         print(f"DEBUG: execute_workflow completed, got {len(results)} results")
         return results
     except Exception as e:

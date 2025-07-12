@@ -1,0 +1,36 @@
+{
+  "test_id": "full_minimal_1752348981",
+  "scenario": {
+    "name": "Hello World API",
+    "complexity": "minimal",
+    "requirements": "Create a basic 'Hello World' REST API endpoint that returns a JSON response"
+  },
+  "workflow_type": "full",
+  "status": "success",
+  "duration": 20.72631311416626,
+  "observations": {
+    "agents_involved": [
+      "planner",
+      "designer",
+      "coder",
+      "reviewer"
+    ],
+    "agent_interaction_sequence": [],
+    "review_patterns": {},
+    "retry_patterns": {},
+    "performance_patterns": {},
+    "notable_events": []
+  },
+  "metrics": {
+    "total_steps": 0,
+    "completed_steps": 0,
+    "success_rate": 0.0,
+    "total_reviews": 0,
+    "review_approval_rate": 0.0,
+    "total_retries": 0,
+    "total_output_size": 0,
+    "output_by_agent": {},
+    "agent_timings": {}
+  },
+  "error": null
+}
