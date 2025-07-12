@@ -1,0 +1,136 @@
+AGENT: designer
+============================================================
+
+
+
+# System Architecture Overview
+The system will be a RESTful API designed to manage TODO items. It will be built using either Node.js with Express.js or Python with Flask/Django, and will connect to a MongoDB or PostgreSQL database. The architecture will follow the MVC (Model-View-Controller) pattern to separate concerns and improve maintainability.
+
+# Component Design
+1. **API Layer**: Handles incoming requests and routes them to the appropriate controller.
+2. **Controller Layer**: Contains the business logic for handling requests and responses.
+3. **Model Layer**: Represents the data structure and interacts with the database.
+4. **Middleware**: For error handling and input validation.
+
+# Data Models and Schemas
+### TODO Item Schema (MongoDB)
+```json
+{
+  "id": "ObjectId",
+  "title": "String",
+  "description": "String",
+  "completed": "Boolean",
+  "created_at": "Date",
+  "updated_at": "Date"
+}
+```
+### TODO Item Schema (PostgreSQL)
+```sql
+CREATE TABLE todos (
+  id SERIAL PRIMARY KEY,
+  title VARCHAR(255) NOT NULL,
+  description TEXT,
+  completed BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+```
+
+# API Specifications
+- **GET /todos**
+  - Description: List all TODO items.
+  - Response: Array of TODO items.
+  
+- **POST /todos**
+  - Description: Create a new TODO item.
+  - Request Body: `{ "title": "String", "description": "String" }`
+  - Response: Created TODO item.
+
+- **GET /todos/:id**
+  - Description: Retrieve a specific TODO item by ID.
+  - Response: TODO item or 404 error if not found.
+
+- **PUT /todos/:id**
+  - Description: Update an existing TODO item.
+  - Request Body: `{ "title": "String", "description": "String", "completed": "Boolean" }`
+  - Response: Updated TODO item or 404 error if not found.
+
+- **DELETE /todos/:id**
+  - Description: Delete a specific TODO item by ID.
+  - Response: Success message or 404 error if not found.
+
+# Interface Definitions
+- **Error Handling Middleware**: Captures errors and sends appropriate responses.
+- **Validation Middleware**: Validates incoming request data using Joi (Node.js) or Marshmallow (Python).
+
+# Design Patterns and Guidelines
+- Use the MVC pattern for organizing code.
+- Implement middleware for error handling and validation.
+- Follow RESTful principles for API design.
+- Ensure proper logging and monitoring for the API.
+
+# IMPLEMENTATION PLAN
+===================
+
+FEATURE[1]: Project Setup
+Description: Initialize project repository and set up the environment.
+Files: package.json (Node.js) or requirements.txt (Python), app.js (Node.js) or app.py (Python)
+Validation: Project initializes without errors.
+Dependencies: None
+Estimated Complexity: Low
+
+FEATURE[2]: Database Connection
+Description: Set up database connection for MongoDB or PostgreSQL.
+Files: db.js (Node.js) or db.py (Python)
+Validation: Successful connection to the database.
+Dependencies: FEATURE[1]
+Estimated Complexity: Medium
+
+FEATURE[3]: TODO Model
+Description: Define the schema and model for TODO items.
+Files: models/todo.js (Node.js) or models/todo.py (Python)
+Validation: Model can create, read, update, and delete TODO items.
+Dependencies: FEATURE[2]
+Estimated Complexity: Medium
+
+FEATURE[4]: API Endpoints
+Description: Implement all required API endpoints for TODO items.
+Files: routes/todo.js (Node.js) or routes/todo.py (Python)
+Validation: All endpoints return expected responses.
+Dependencies: FEATURE[3]
+Estimated Complexity: High
+
+FEATURE[5]: Error Handling Middleware
+Description: Implement global error handling middleware.
+Files: middleware/errorHandler.js (Node.js) or middleware/errorHandler.py (Python)
+Validation: Errors are handled and returned in a consistent format.
+Dependencies: FEATURE[4]
+Estimated Complexity: Medium
+
+FEATURE[6]: Validation Middleware
+Description: Set up input validation for all endpoints.
+Files: middleware/validation.js (Node.js) or middleware/validation.py (Python)
+Validation: Invalid inputs are rejected with appropriate error messages.
+Dependencies: FEATURE[4]
+Estimated Complexity: Medium
+
+FEATURE[7]: Testing
+Description: Write unit and integration tests for the API.
+Files: tests/todo.test.js (Node.js) or tests/test_todo.py (Python)
+Validation: All tests pass successfully.
+Dependencies: FEATURE[4]
+Estimated Complexity: High
+
+FEATURE[8]: Documentation
+Description: Create API documentation using Swagger or Postman.
+Files: docs/api-docs.md
+Validation: Documentation is complete and accessible.
+Dependencies: FEATURE[7]
+Estimated Complexity: Low
+
+FEATURE[9]: Deployment
+Description: Set up CI/CD pipeline and deploy the application.
+Files: .github/workflows/deploy.yml (for GitHub Actions) or equivalent for other platforms
+Validation: Application is deployed and accessible.
+Dependencies: FEATURE[8]
+Estimated Complexity: Medium

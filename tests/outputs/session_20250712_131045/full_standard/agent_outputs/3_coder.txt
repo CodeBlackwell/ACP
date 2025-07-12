@@ -1,0 +1,188 @@
+AGENT: coder
+============================================================
+
+
+✅ PROJECT CREATED: todo_api_generated_20250712_131123
+📁 Location: /Users/lechristopherblackwell/Desktop/Ground_up/rebuild/generated/todo_api_generated_20250712_131123
+📄 Files created: 8
+🕐 Generated: 2025-07-12 13:11:23
+
+Files:
+  - package.json
+  - src/app.js
+  - models/todo.js
+  - routes/todo.js
+  - middleware/errorHandler.js
+  - middleware/validation.js
+  - tests/todo.test.js
+  - README.md
+
+--- IMPLEMENTATION DETAILS ---
+FILENAME: package.json
+```json
+{
+  "name": "todo-api",
+  "version": "1.0.0",
+  "main": "src/app.js",
+  "dependencies": {
+    "express": "^4.17.1",
+    "mongoose": "^5.10.9",
+    "joi": "^17.4.0"
+  },
+  "scripts": {
+    "start": "node src/app.js",
+    "test": "jest"
+  }
+}
+```
+
+FILENAME: src/app.js
+```javascript
+const express = require('express');
+const mongoose = require('mongoose');
+const todoRoutes = require('./routes/todo');
+const errorHandler = require('./middleware/errorHandler');
+const validation = require('./middleware/validation');
+
+const app = express();
+app.use(express.json());
+app.use('/todos', todoRoutes);
+app.use(errorHandler);
+
+const PORT = process.env.PORT || 3000;
+
+mongoose.connect('mongodb://localhost:27017/todo', { useNewUrlParser: true, useUnifiedTopology: true })
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`Server is running on port ${PORT}`);
+    });
+  })
+  .catch(err => console.error('Database connection error:', err));
+```
+
+FILENAME: models/todo.js
+```javascript
+const mongoose = require('mongoose');
+
+const todoSchema = new mongoose.Schema({
+  title: { type: String, required: true },
+  description: { type: String },
+  completed: { type: Boolean, default: false },
+  created_at: { type: Date, default: Date.now },
+  updated_at: { type: Date, default: Date.now }
+});
+
+const Todo = mongoose.model('Todo', todoSchema);
+module.exports = Todo;
+```
+
+FILENAME: routes/todo.js
+```javascript
+const express = require('express');
+const Todo = require('../models/todo');
+const router = express.Router();
+
+// GET /todos
+router.get('/', async (req, res) => {
+  const todos = await Todo.find();
+  res.json(todos);
+});
+
+// POST /todos
+router.post('/', async (req, res) => {
+  const todo = new Todo(req.body);
+  await todo.save();
+  res.status(201).json(todo);
+});
+
+// GET /todos/:id
+router.get('/:id', async (req, res) => {
+  const todo = await Todo.findById(req.params.id);
+  if (!todo) return res.status(404).send('Todo not found');
+  res.json(todo);
+});
+
+// PUT /todos/:id
+router.put('/:id', async (req, res) => {
+  const todo = await Todo.findByIdAndUpdate(req.params.id, req.body, { new: true });
+  if (!todo) return res.status(404).send('Todo not found');
+  res.json(todo);
+});
+
+// DELETE /todos/:id
+router.delete('/:id', async (req, res) => {
+  const todo = await Todo.findByIdAndDelete(req.params.id);
+  if (!todo) return res.status(404).send('Todo not found');
+  res.send('Todo deleted');
+});
+
+module.exports = router;
+```
+
+FILENAME: middleware/errorHandler.js
+```javascript
+module.exports = (err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).send('Something broke!');
+};
+```
+
+FILENAME: middleware/validation.js
+```javascript
+const Joi = require('joi');
+
+const todoSchema = Joi.object({
+  title: Joi.string().required(),
+  description: Joi.string(),
+  completed: Joi.boolean()
+});
+
+module.exports = (req, res, next) => {
+  const { error } = todoSchema.validate(req.body);
+  if (error) return res.status(400).send(error.details[0].message);
+  next();
+};
+```
+
+FILENAME: tests/todo.test.js
+```javascript
+const request = require('supertest');
+const app = require('../src/app');
+
+describe('Todo API', () => {
+  it('should create a new todo', async () => {
+    const res = await request(app)
+      .post('/todos')
+      .send({ title: 'Test Todo', description: 'Test Description' });
+    expect(res.statusCode).toEqual(201);
+    expect(res.body).toHaveProperty('title', 'Test Todo');
+  });
+
+  it('should fetch all todos', async () => {
+    const res = await request(app).get('/todos');
+    expect(res.statusCode).toEqual(200);
+    expect(Array.isArray(res.body)).toBeTruthy();
+  });
+});
+```
+
+FILENAME: README.md
+```markdown
+# TODO API
+
+## Setup Instructions
+
+1. Clone the repository.
+2. Run `npm install` to install dependencies.
+3. Start the MongoDB server.
+4. Run `npm start` to start the API server.
+5. Use Postman or any API client to test the endpoints.
+
+## API Endpoints
+
+- **GET /todos**: List all TODO items.
+- **POST /todos**: Create a new TODO item.
+- **GET /todos/:id**: Retrieve a specific TODO item by ID.
+- **PUT /todos/:id**: Update an existing TODO item.
+- **DELETE /todos/:id**: Delete a specific TODO item by ID.
+```

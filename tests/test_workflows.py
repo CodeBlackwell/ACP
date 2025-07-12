@@ -57,13 +57,13 @@ class TestScenario:
 # Comprehensive test scenarios
 TEST_SCENARIOS = {
     TestComplexity.MINIMAL: TestScenario(
-        name="Hello World API",
+        name="Hello World API : In Python",
         complexity=TestComplexity.MINIMAL,
-        requirements="Create a basic 'Hello World' REST API endpoint that returns a JSON response",
+        requirements="Create a basic 'Hello World' REST API endpoint that returns a JSON response. **Only Use Python**",
         timeout=180
     ),
     TestComplexity.STANDARD: TestScenario(
-        name="TODO List API",
+        name="TODO List API : In Python",
         complexity=TestComplexity.STANDARD,
         requirements="""Create a complete TODO list REST API with the following endpoints:
         - GET /todos - List all todos
@@ -71,11 +71,12 @@ TEST_SCENARIOS = {
         - GET /todos/:id - Get a specific todo
         - PUT /todos/:id - Update a todo
         - DELETE /todos/:id - Delete a todo
-        Include proper error handling and validation.""",
+        Include proper error handling and validation. 
+        **Only Use Python**""",
         timeout=300
     ),
     TestComplexity.COMPLEX: TestScenario(
-        name="E-Commerce Platform",
+        name="E-Commerce Platform : In Python",
         complexity=TestComplexity.COMPLEX,
         requirements="""Build a full-stack e-commerce application with:
         - User authentication and authorization
@@ -85,11 +86,12 @@ TEST_SCENARIOS = {
         - Payment processing integration
         - Admin dashboard
         - Email notifications
-        - API documentation""",
+        - API documentation
+        **Only Use Python**""",
         timeout=600
     ),
     TestComplexity.STRESS: TestScenario(
-        name="Microservices Architecture",
+        name="Microservices Architecture : In Python",
         complexity=TestComplexity.STRESS,
         requirements="""Design and implement a microservices architecture for a social media platform with:
         - User service (authentication, profiles)
@@ -101,7 +103,8 @@ TEST_SCENARIOS = {
         - Service discovery
         - Message queue integration
         - Monitoring and logging
-        - Docker containerization""",
+        - Docker containerization.
+        **Only Use Python**""",
         timeout=900
     )
 }

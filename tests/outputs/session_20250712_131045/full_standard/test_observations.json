@@ -1,0 +1,41 @@
+{
+  "test_id": "full_standard_1752351045",
+  "scenario": {
+    "name": "TODO List API",
+    "complexity": "standard",
+    "requirements": "Create a complete TODO list REST API with the following endpoints:\n        - GET /todos - List all todos\n        - POST /todos - Create a new todo\n        - GET /todos/:id - Get a specific todo\n        - PUT /todos/:id - Update a todo\n        - DELETE /todos/:id - Delete a todo\n        Include proper error handling and validation."
+  },
+  "workflow_type": "full",
+  "status": "success",
+  "duration": 40.24802112579346,
+  "observations": {
+    "agents_involved": [
+      "planner",
+      "designer",
+      "coder",
+      "reviewer"
+    ],
+    "agent_interaction_sequence": [],
+    "review_patterns": {},
+    "retry_patterns": {},
+    "performance_patterns": {},
+    "notable_events": []
+  },
+  "metrics": {
+    "total_steps": 0,
+    "completed_steps": 0,
+    "success_rate": 0.0,
+    "total_reviews": 0,
+    "review_approval_rate": 0.0,
+    "total_retries": 0,
+    "total_output_size": 13059,
+    "output_by_agent": {
+      "planner": 2661,
+      "designer": 4852,
+      "coder": 4627,
+      "reviewer": 919
+    },
+    "agent_timings": {}
+  },
+  "error": null
+}
