@@ -86,6 +86,33 @@ async def coder_agent(input: list[Message]) -> AsyncGenerator:
                     - NEVER use Flask 2.0.x which has compatibility issues with Werkzeug 3.x
                     - Example: Flask==3.0.3 or Flask>=3.0.0
                     
+                    FLASK APPLICATION REQUIREMENTS:
+                    1. All SQLAlchemy models MUST include a to_dict() method for serialization:
+                       def to_dict(self):
+                           return {
+                               'id': self.id,
+                               'field1': self.field1,
+                               # ... all fields
+                           }
+                    
+                    2. If using Marshmallow schemas, they MUST be integrated in routes correctly:
+                       - Use schema.load() for input validation
+                       - Use jsonify(schema.dump(object)) for output serialization (NOT schema.jsonify)
+                       - Handle validation errors properly
+                       - Example:
+                         return jsonify(todo_schema.dump(todo)), 200
+                    
+                    3. Error handlers MUST be registered with the Flask app:
+                       app.register_error_handler(404, not_found_error)
+                       app.register_error_handler(400, bad_request_error)
+                    
+                    4. Always include a health check endpoint in app.py:
+                       @app.route('/health')
+                       def health():
+                           return jsonify({'status': 'healthy'}), 200
+                    
+                    5. Ensure all imports are used and all defined components are integrated
+                    
                     CRITICAL: You MUST respond with actual code files in this EXACT format:
                     
                     FILENAME: package.json

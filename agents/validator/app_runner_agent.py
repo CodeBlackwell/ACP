@@ -61,14 +61,9 @@ class AppRunnerAgent:
                 install_log = await self._install_dependencies(temp_dir, project_type, timeout)
                 
                 # Run application
-                execution_log, error_log, port = await self._run_application(
+                execution_log, error_log, port, health_passed = await self._run_application(
                     temp_dir, project_type, config, timeout
                 )
-                
-                # Health check if configured
-                health_passed = False
-                if port and config.get('health_endpoint'):
-                    health_passed = await self._check_health(port, config['health_endpoint'])
                 
                 # Generate recommendations
                 recommendations = self._generate_recommendations(
@@ -173,7 +168,7 @@ class AppRunnerAgent:
                              project_dir: str, 
                              project_type: str,
                              config: Dict[str, Any],
-                             timeout: int) -> Tuple[str, Optional[str], Optional[int]]:
+                             timeout: int) -> Tuple[str, Optional[str], Optional[int], bool]:
         """Run the application and return logs and port if detected"""
         run_commands = {
             'node': self._get_node_run_command,
@@ -183,7 +178,7 @@ class AppRunnerAgent:
         }
         
         if project_type not in run_commands:
-            return "", f"No run command for project type: {project_type}", None
+            return "", f"No run command for project type: {project_type}", None, False
         
         cmd = run_commands[project_type](project_dir)
         
@@ -201,10 +196,15 @@ class AppRunnerAgent:
             # Check if process is still running
             if process.returncode is not None:
                 stdout, stderr = await process.communicate()
-                return stdout.decode(), stderr.decode(), None
+                return stdout.decode(), stderr.decode(), None, False
             
             # Try to detect listening port
             port = await self._detect_listening_port(process.pid)
+            
+            # Perform health check while app is still running
+            health_passed = False
+            if port and config.get('health_endpoint'):
+                health_passed = await self._check_health(port, config['health_endpoint'])
             
             # Collect some output
             try:
@@ -223,10 +223,10 @@ class AppRunnerAgent:
                 process.terminate()
                 await process.wait()
             
-            return output, error, port
+            return output, error, port, health_passed
             
         except Exception as e:
-            return "", f"Failed to run application: {str(e)}", None
+            return "", f"Failed to run application: {str(e)}", None, False
     
     def _get_node_run_command(self, project_dir: str) -> List[str]:
         """Get the appropriate run command for a Node.js project"""

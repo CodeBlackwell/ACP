@@ -288,7 +288,8 @@ class ModernWorkflowTester:
                 validate_output=validate_output,
                 validation_config={
                     "timeout": 60,
-                    "port_check": True
+                    "port_check": True,
+                    "health_endpoint": "/health"
                 } if validate_output else None
             )
             
@@ -527,7 +528,10 @@ class ModernWorkflowTester:
                 print(f"   • Port Detected: {val['port']}")
             if val.get('duration'):
                 print(f"   • Validation Duration: {val['duration']}")
-            print(f"   • Health Check: {'✅ Passed' if val.get('health_check') else '❌ Failed'}")
+            if val.get('health_check_performed', True):  # Default to True for backward compatibility
+                print(f"   • Health Check: {'✅ Passed' if val.get('health_check') else '❌ Failed'}")
+            else:
+                print(f"   • Health Check: ⚠️  Not performed (no health endpoint configured)")
         
         if result.error_message:
             print(f"\n❌ Error: {result.error_message}")
@@ -548,7 +552,8 @@ class ModernWorkflowTester:
                     "project_type": self._extract_value(output, "Project Type: "),
                     "port": self._extract_value(output, "Port: "),
                     "duration": self._extract_value(output, "Duration: "),
-                    "health_check": "✅ Passed" in output
+                    "health_check": "✅ Passed" in output,
+                    "health_check_performed": "Health Check:" in output
                 }
                 print(f"   ✅ Found validation result: {'SUCCESS' if result.observations.validation_result['success'] else 'FAILED'}")
                 break

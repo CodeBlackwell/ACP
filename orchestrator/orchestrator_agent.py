@@ -15,6 +15,10 @@ import re
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
+# Apply ACP SDK compatibility patches before importing
+from utils.acp_sdk_compat import ensure_compatibility
+ensure_compatibility()
+
 # Import shared data models
 from shared.data_models import (
     TeamMember, WorkflowStep, TeamMemberResult, 
