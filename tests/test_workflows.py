@@ -31,6 +31,9 @@ from workflows import execute_workflow
 # Monitoring imports removed - tracing disabled
 from workflows.workflow_manager import get_available_workflows, get_workflow_description
 
+# Import Test Runner components
+from agents.validator import TestRunnerAgent, TestReportGenerator
+
 
 # ============================================================================
 # TEST CONFIGURATION
@@ -126,6 +129,7 @@ class TestObservations:
     notable_events: List[str] = field(default_factory=list)
     validation_result: Optional[Dict[str, Any]] = None
     generated_app_path: Optional[str] = None
+    test_run_result: Optional[Dict[str, Any]] = None
 
 
 @dataclass
@@ -254,7 +258,7 @@ class ModernWorkflowTester:
                       workflow_type: str, 
                       scenario: TestScenario,
                       save_artifacts: bool = True,
-                      validate_output: bool = False) -> TestResult:
+                      run_tests: bool = False) -> TestResult:
         """
         Run a single test with comprehensive monitoring and observation.
         """
@@ -285,13 +289,7 @@ class ModernWorkflowTester:
                 requirements=scenario.requirements,
                 workflow_type=workflow_type,
                 max_retries=3,
-                timeout_seconds=scenario.timeout,
-                validate_output=validate_output,
-                validation_config={
-                    "timeout": 60,
-                    "port_check": True,
-                    "health_endpoint": "/health"
-                } if validate_output else None
+                timeout_seconds=scenario.timeout
             )
             
             # Validate input
@@ -325,9 +323,9 @@ class ModernWorkflowTester:
             # Make observations about the execution
             self._observe_execution(result)
             
-            # Extract validation results if validation was enabled
-            if validate_output:
-                self._extract_validation_results(result)
+            # Run tests if requested
+            if run_tests:
+                await self._run_tests_on_output(result)
             
             # Mark as successful
             result.status = "success"
@@ -518,47 +516,86 @@ class ModernWorkflowTester:
         print(f"   • Total Output: {result.metrics.total_output_size:,} characters")
         print(f"   • Average per Agent: {result.metrics.total_output_size // len(result.observations.agents_involved):,} characters")
         
-        # Validation results if available
-        if result.observations.validation_result:
-            print(f"\n🚀 Validation Results:")
-            val = result.observations.validation_result
-            print(f"   • Status: {'✅ SUCCESS' if val['success'] else '❌ FAILED'}")
-            if val.get('project_type'):
-                print(f"   • Project Type: {val['project_type']}")
-            if val.get('port'):
-                print(f"   • Port Detected: {val['port']}")
-            if val.get('duration'):
-                print(f"   • Validation Duration: {val['duration']}")
-            if val.get('health_check_performed', True):  # Default to True for backward compatibility
-                print(f"   • Health Check: {'✅ Passed' if val.get('health_check') else '❌ Failed'}")
+        # Test results if available
+        if result.observations.test_run_result:
+            print(f"\n🧪 Test Results:")
+            test_res = result.observations.test_run_result
+            print(f"   • Status: {'✅ SUCCESS' if test_res['success'] else '❌ FAILED'}")
+            if test_res.get('error'):
+                print(f"   • Error: {test_res['error']}")
             else:
-                print(f"   • Health Check: ⚠️  Not performed (no health endpoint configured)")
+                print(f"   • Framework: {test_res.get('test_framework', 'unknown')}")
+                print(f"   • Total Tests: {test_res.get('total_tests', 0)}")
+                print(f"   • Passed: {test_res.get('passed', 0)} ✅")
+                print(f"   • Failed: {test_res.get('failed', 0)} ❌")
+                print(f"   • Skipped: {test_res.get('skipped', 0)} ⏭️")
+                print(f"   • Test Command: {test_res.get('test_command', 'N/A')}")
+                if test_res.get('reports', {}).get('test_results_csv'):
+                    print(f"   • CSV Report: {test_res['reports']['test_results_csv']}")
         
         if result.error_message:
             print(f"\n❌ Error: {result.error_message}")
         
         print("\n" + "═" * 70)
     
-    def _extract_validation_results(self, result: TestResult):
-        """Extract validation results and generated app path from agent outputs"""
-        print("🔍 Extracting validation results...")
+    async def _run_tests_on_output(self, result: TestResult):
+        """Run tests on the generated code using TestRunnerAgent"""
+        print("🧪 Running tests on generated code...")
         
-        # Look for validator output
-        for agent_result in result.agent_results:
-            if agent_result.name == "validator":
-                # Parse validation report
-                output = agent_result.output
-                result.observations.validation_result = {
-                    "success": "✅ SUCCESS" in output,
-                    "project_type": self._extract_value(output, "Project Type: "),
-                    "port": self._extract_value(output, "Port: "),
-                    "duration": self._extract_value(output, "Duration: "),
-                    "health_check": "✅ Passed" in output,
-                    "health_check_performed": "Health Check:" in output
-                }
-                print(f"   ✅ Found validation result: {'SUCCESS' if result.observations.validation_result['success'] else 'FAILED'}")
-                break
+        # First, extract the generated app path
+        self._extract_generated_app_path(result)
         
+        if not result.observations.generated_app_path:
+            print("   ⚠️  No generated app path found, cannot run tests")
+            result.observations.test_run_result = {
+                "success": False,
+                "error": "No generated app path found"
+            }
+            return
+        
+        try:
+            # Initialize test runner and report generator
+            test_runner = TestRunnerAgent(timeout=300)
+            report_generator = TestReportGenerator(
+                report_dir=str(result.artifacts_path) if result.artifacts_path else "./test_reports"
+            )
+            
+            # Run tests
+            test_result = await test_runner.run_tests(
+                project_path=result.observations.generated_app_path,
+                session_id=result.test_id
+            )
+            
+            # Generate reports
+            reports = report_generator.generate_report(test_result, result.agent_results)
+            
+            # Store test results
+            result.observations.test_run_result = {
+                "success": test_result.success,
+                "total_tests": test_result.total_tests,
+                "passed": test_result.passed,
+                "failed": test_result.failed,
+                "skipped": test_result.skipped,
+                "test_framework": test_result.test_framework,
+                "execution_time": test_result.execution_time,
+                "test_command": test_result.test_command,
+                "reports": reports
+            }
+            
+            print(f"   ✅ Test run complete:")
+            print(f"      • Framework: {test_result.test_framework}")
+            print(f"      • Total: {test_result.total_tests} | Passed: {test_result.passed} | Failed: {test_result.failed}")
+            print(f"      • CSV Report: {reports['test_results_csv']}")
+            
+        except Exception as e:
+            print(f"   ❌ Error running tests: {e}")
+            result.observations.test_run_result = {
+                "success": False,
+                "error": str(e)
+            }
+    
+    def _extract_generated_app_path(self, result: TestResult):
+        """Extract generated app path from agent outputs"""
         # Look for generated app path in coder output
         for agent_result in result.agent_results:
             if agent_result.name == "coder":
@@ -611,7 +648,8 @@ class ModernWorkflowTester:
                     "performance_patterns": result.observations.performance_patterns,
                     "notable_events": result.observations.notable_events,
                     "validation_result": result.observations.validation_result,
-                    "generated_app_path": result.observations.generated_app_path
+                    "generated_app_path": result.observations.generated_app_path,
+                    "test_run_result": result.observations.test_run_result
                 },
                 "metrics": {
                     "total_steps": result.metrics.total_steps,
@@ -643,38 +681,25 @@ class ModernWorkflowTester:
         
         print(f"   ✅ Artifacts saved to: {test_dir.relative_to(self.output_dir)}")
         
-        # If validation was run and we have the generated app path, copy validation report there
-        if result.observations.validation_result and result.observations.generated_app_path:
+        # If tests were run and we have test results, copy test report to generated app directory
+        if result.observations.test_run_result and result.observations.generated_app_path:
             try:
-                import shutil
                 gen_app_path = Path(result.observations.generated_app_path)
-                if gen_app_path.exists():
-                    # Copy validation report to generated app directory
-                    validation_report_src = test_dir / "test_observations.json"
-                    validation_report_dst = gen_app_path / "validation_report.json"
-                    
-                    # Create a focused validation report
-                    validation_data = {
-                        "test_id": result.test_id,
-                        "test_scenario": result.scenario.name,
-                        "workflow_type": result.workflow_type,
-                        "validation_result": result.observations.validation_result,
-                        "test_status": result.status,
-                        "test_duration": result.metrics.duration,
-                        "timestamp": datetime.now().isoformat()
-                    }
-                    
-                    with open(validation_report_dst, 'w') as f:
-                        json.dump(validation_data, f, indent=2)
-                    
-                    print(f"   📋 Validation report saved to generated app: {validation_report_dst.name}")
+                if gen_app_path.exists() and result.observations.test_run_result.get('reports'):
+                    # Copy test results CSV to generated app directory
+                    csv_src = result.observations.test_run_result['reports'].get('test_results_csv')
+                    if csv_src and Path(csv_src).exists():
+                        csv_dst = gen_app_path / "test_results.csv"
+                        import shutil
+                        shutil.copy2(csv_src, csv_dst)
+                        print(f"   📋 Test results CSV copied to generated app: {csv_dst.name}")
             except Exception as e:
-                print(f"   ⚠️  Could not save validation report to app directory: {e}")
+                print(f"   ⚠️  Could not copy test results to app directory: {e}")
     
     async def run_workflow_suite(self, 
                                workflow_type: str,
                                complexities: Optional[List[TestComplexity]] = None,
-                               validate_output: bool = False):
+                               run_tests: bool = False):
         """Run a complete test suite for a workflow type"""
         print(f"\n{'━' * 80}")
         print(f"🔬 TESTING WORKFLOW: {workflow_type.upper()}")
@@ -694,7 +719,7 @@ class ModernWorkflowTester:
                 print(f"⏭️  Skipping {complexity.value} test for {workflow_type} (not applicable)")
                 continue
             
-            result = await self.run_test(workflow_type, scenario, validate_output=validate_output)
+            result = await self.run_test(workflow_type, scenario, run_tests=run_tests)
             suite_results.append(result)
             
             # Brief pause between tests
@@ -702,7 +727,7 @@ class ModernWorkflowTester:
         
         return suite_results
     
-    async def run_comprehensive_test_suite(self, complexities=None, validate_output=False):
+    async def run_comprehensive_test_suite(self, complexities=None, run_tests=False):
         """Run comprehensive test suite across all workflows"""
         print("\n" + "🌟" * 40)
         print("🎯 STARTING COMPREHENSIVE TEST SUITE")
@@ -731,7 +756,7 @@ class ModernWorkflowTester:
         all_results = []
         
         for workflow_type, test_complexities in test_plan:
-            results = await self.run_workflow_suite(workflow_type, test_complexities, validate_output)
+            results = await self.run_workflow_suite(workflow_type, test_complexities, run_tests)
             all_results.extend(results)
         
         # Generate final report
@@ -873,9 +898,9 @@ async def main():
     parser.add_argument('--save-artifacts', '-s', action='store_true', default=True,
                        help='Save test artifacts (default: True)')
     
-    # Option to validate generated applications
-    parser.add_argument('--validate', '-v', action='store_true',
-                       help='Validate generated applications by attempting to run them')
+    # Option to run tests on generated code
+    parser.add_argument('--run-tests', '-t', action='store_true',
+                       help='Run tests on generated code using the Test Runner Agent')
     
     # Parse arguments
     args = parser.parse_args()
@@ -903,10 +928,10 @@ async def main():
     try:
         if args.workflow == 'all':
             # Run the comprehensive test suite with filter on complexity
-            await tester.run_comprehensive_test_suite(complexities, validate_output=args.validate)
+            await tester.run_comprehensive_test_suite(complexities, run_tests=args.run_tests)
         else:
             # Run specific workflow tests
-            await tester.run_workflow_suite(args.workflow, complexities, validate_output=args.validate)
+            await tester.run_workflow_suite(args.workflow, complexities, run_tests=args.run_tests)
         
     except KeyboardInterrupt:
         print("\n\n⚠️  Test execution interrupted by user")

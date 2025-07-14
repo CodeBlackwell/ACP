@@ -1,0 +1,16 @@
+Test Run Summary
+Field,Value
+Session ID,integration_test
+Timestamp,2025-07-14T11:45:21.213536
+Success,False
+Total Tests,0
+Passed,0
+Failed,0
+Skipped,0
+Execution Time (s),2.00
+Test Framework,unittest
+Test Command,python -m unittest discover -v
+Project Path,.
+
+Individual Test Results
+Test File,Test Name,Status,Duration (ms),Error Message,Test Suite

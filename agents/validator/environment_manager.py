@@ -1,5 +1,5 @@
 """
-Environment manager for creating isolated test environments.
+Environment manager for creating isolated test environments for test execution.
 """
 import os
 import tempfile

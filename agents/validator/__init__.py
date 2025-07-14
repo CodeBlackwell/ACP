@@ -1,8 +1,8 @@
 """
-Validation agent module for post-workflow application validation.
+Test runner agent module for executing and reporting on test suites.
 """
-from .app_runner_agent import AppRunnerAgent
+from .test_runner_agent import TestRunnerAgent
 from .environment_manager import EnvironmentManager
-from .validation_report import ValidationReportGenerator
+from .test_report_generator import TestReportGenerator
 
-__all__ = ['AppRunnerAgent', 'EnvironmentManager', 'ValidationReportGenerator']
+__all__ = ['TestRunnerAgent', 'EnvironmentManager', 'TestReportGenerator']

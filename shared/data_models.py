@@ -126,3 +126,32 @@ class ValidationResult:
     recommendations: List[str] = field(default_factory=list)
     duration_seconds: float = 0.0
     environment_path: Optional[str] = None
+
+
+@dataclass
+class TestResult:
+    """Individual test result"""
+    test_file: str
+    test_name: str
+    status: str  # passed/failed/skipped
+    duration_ms: float
+    error_message: Optional[str] = None
+    test_framework: str = "unknown"
+    test_suite: Optional[str] = None  # For grouping tests
+
+
+@dataclass
+class TestRunResult:
+    """Complete test run result"""
+    success: bool
+    total_tests: int
+    passed: int
+    failed: int
+    skipped: int
+    test_results: List[TestResult]
+    execution_time: float
+    test_command: str
+    output_log: str
+    test_framework: str = "unknown"
+    project_path: str = ""
+    session_id: Optional[str] = None

@@ -64,7 +64,16 @@ from workflows.full.full_workflow import execute_full_workflow
 from workflows.individual.individual_workflow import execute_individual_workflow
 
 # Import validation components
-from agents.validator import AppRunnerAgent, ValidationReportGenerator
+# Import validation components - these are still used by the validate_output feature
+# Note: The actual AppRunnerAgent and ValidationReportGenerator have been refactored to TestRunnerAgent and TestReportGenerator
+# but we keep the old validation flow here for backward compatibility
+try:
+    from agents.validator.app_runner_agent import AppRunnerAgent
+    from agents.validator.validation_report import ValidationReportGenerator
+except ImportError:
+    # If the old modules are not available, disable validation
+    AppRunnerAgent = None
+    ValidationReportGenerator = None
 
 
 async def execute_workflow(input_data: CodingTeamInput) -> List[TeamMemberResult]:
@@ -326,6 +335,12 @@ async def _run_validation(results: List[TeamMemberResult],
         Updated results with validation report appended
     """
     print("Starting post-workflow validation...")
+    
+    # Check if validation components are available
+    if AppRunnerAgent is None or ValidationReportGenerator is None:
+        print("⚠️  Validation components not available - validation has been refactored to TestRunnerAgent")
+        print("   Use test_workflows.py with --run-tests flag instead")
+        return results
     
     try:
         # Extract generated files from results

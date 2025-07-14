@@ -1,0 +1,18 @@
+Test Run Summary
+Field,Value
+Session ID,full_minimal_1752519555
+Timestamp,2025-07-14T11:59:56.088098
+Success,True
+Total Tests,2
+Passed,2
+Failed,0
+Skipped,0
+Execution Time (s),1.24
+Test Framework,pytest
+Test Command,pytest -v --tb=short --junit-xml=test_results.xml
+Project Path,/Users/lechristopherblackwell/Desktop/Ground_up/rebuild/generated/app_session_exec_20250714_115916_0b08b90f
+
+Individual Test Results
+Test File,Test Name,Status,Duration (ms),Error Message,Test Suite
+test_app.py,test_hello,passed,4.00,,test_app
+test_app.py,test_not_found,passed,5.00,,test_app

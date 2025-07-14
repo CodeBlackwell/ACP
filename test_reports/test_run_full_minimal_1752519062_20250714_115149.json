@@ -1,0 +1,47 @@
+{
+  "session_id": "full_minimal_1752519062",
+  "timestamp": "2025-07-14T11:51:49.672349",
+  "test_run_result": {
+    "success": true,
+    "total_tests": 1,
+    "passed": 1,
+    "failed": 0,
+    "skipped": 0,
+    "execution_time": 1.6466679573059082,
+    "test_framework": "pytest",
+    "test_command": "pytest -v --tb=short --junit-xml=test_results.xml",
+    "project_path": "/Users/lechristopherblackwell/Desktop/Ground_up/rebuild/generated/app_session_exec_20250714_115103_4342f078"
+  },
+  "test_results": [
+    {
+      "test_file": "test_app.py",
+      "test_name": "test_hello",
+      "status": "passed",
+      "duration_ms": 5.0,
+      "error_message": null,
+      "test_suite": "test_app"
+    }
+  ],
+  "output_log": "============================= test session starts ==============================\nplatform darwin -- Python 3.13.5, pytest-8.4.1, pluggy-1.6.0 -- /Users/lechristopherblackwell/.pyenv/versions/3.13.5/bin/python3.13\ncachedir: .pytest_cache\nrootdir: /Users/lechristopherblackwell/Desktop/Ground_up/rebuild/generated/app_session_exec_20250714_115103_4342f078\nplugins: anyio-4.9.0, langsmith-0.4.1, asyncio-1.0.0\nasyncio: mode=Mode.STRICT, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollecting ... collected 1 item\n\ntest_app.py::test_hello PASSED                                           [100%]\n\n- generated xml file: /Users/lechristopherblackwell/Desktop/Ground_up/rebuild/generated/app_session_exec_20250714_115103_4342f078/test_results.xml -\n============================== 1 passed in 0.17s ===============================\n",
+  "workflow_summary": {
+    "total_agents": 4,
+    "agents": [
+      {
+        "name": "planner",
+        "output_length": 1887
+      },
+      {
+        "name": "designer",
+        "output_length": 2766
+      },
+      {
+        "name": "coder",
+        "output_length": 1896
+      },
+      {
+        "name": "reviewer",
+        "output_length": 1341
+      }
+    ]
+  }
+}

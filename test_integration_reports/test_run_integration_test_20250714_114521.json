@@ -1,0 +1,17 @@
+{
+  "session_id": "integration_test",
+  "timestamp": "2025-07-14T11:45:21.213708",
+  "test_run_result": {
+    "success": false,
+    "total_tests": 0,
+    "passed": 0,
+    "failed": 0,
+    "skipped": 0,
+    "execution_time": 1.9977340698242188,
+    "test_framework": "unittest",
+    "test_command": "python -m unittest discover -v",
+    "project_path": "."
+  },
+  "test_results": [],
+  "output_log": "Testing imports...\n\u2705 dotenv imported successfully\n\u2705 Environment variables loaded\n\u26a0\ufe0f  Warning: acp_sdk already imported. Compatibility patches may not work correctly.\n   Please import utils.acp_sdk_compat before importing acp_sdk\n\u274c Import error: cannot import name 'AppRunnerAgent' from 'agents.validator' (/Users/lechristopherblackwell/Desktop/Ground_up/rebuild/agents/validator/__init__.py)\nTesting imports...\n\u2705 dotenv imported successfully\n\u2705 Environment variables loaded\n\u2705 designer_agent imported successfully\n\u2705 ACP types imported successfully\nTesting imports...\n\u2705 dotenv imported successfully\n\u2705 Environment variables loaded\n\u2705 planner_agent imported successfully\n\u2705 ACP types imported successfully\nTesting imports...\n\u2705 dotenv imported successfully\n\u2705 Environment variables loaded\n\u2705 reviewer_agent imported successfully\n\u2705 ACP types imported successfully\nTesting imports...\n\u2705 dotenv imported successfully\n\u2705 Environment variables loaded\n\u2705 test_writer_agent imported successfully\n\u2705 ACP types imported successfully\nTesting logger without workflows package...\n1. Importing ExecutionLogger...\n   - Failed: cannot import name 'AppRunnerAgent' from 'agents.validator' (/Users/lechristopherblackwell/Desktop/Ground_up/rebuild/agents/validator/__init__.py)\n"
+}
