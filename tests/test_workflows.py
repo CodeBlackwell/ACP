@@ -557,7 +557,7 @@ class ModernWorkflowTester:
             # Initialize test runner and report generator
             test_runner = TestRunnerAgent(timeout=300)
             report_generator = TestReportGenerator(
-                report_dir=str(result.artifacts_path) if result.artifacts_path else "./test_reports"
+                report_dir=result.observations.generated_app_path
             )
             
             # Run tests
@@ -680,21 +680,6 @@ class ModernWorkflowTester:
                 f.write(agent_result.output)
         
         print(f"   ✅ Artifacts saved to: {test_dir.relative_to(self.output_dir)}")
-        
-        # If tests were run and we have test results, copy test report to generated app directory
-        if result.observations.test_run_result and result.observations.generated_app_path:
-            try:
-                gen_app_path = Path(result.observations.generated_app_path)
-                if gen_app_path.exists() and result.observations.test_run_result.get('reports'):
-                    # Copy test results CSV to generated app directory
-                    csv_src = result.observations.test_run_result['reports'].get('test_results_csv')
-                    if csv_src and Path(csv_src).exists():
-                        csv_dst = gen_app_path / "test_results.csv"
-                        import shutil
-                        shutil.copy2(csv_src, csv_dst)
-                        print(f"   📋 Test results CSV copied to generated app: {csv_dst.name}")
-            except Exception as e:
-                print(f"   ⚠️  Could not copy test results to app directory: {e}")
     
     async def run_workflow_suite(self, 
                                workflow_type: str,
