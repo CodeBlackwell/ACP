@@ -2,6 +2,11 @@
 Utility functions for extracting content from ACP messages
 """
 from typing import List, Union
+
+# Apply ACP SDK compatibility patches before importing
+from utils.acp_sdk_compat import ensure_compatibility
+ensure_compatibility()
+
 from acp_sdk import Message
 
 

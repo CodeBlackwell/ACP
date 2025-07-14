@@ -10,6 +10,7 @@ from workflows.workflow_config import MAX_REVIEW_RETRIES
 from workflows.incremental.feature_orchestrator import run_incremental_coding_phase
 # Import executor components
 from agents.executor.executor_agent import generate_session_id
+from workflows.message_utils import extract_message_content
 
 async def execute_full_workflow(input_data: CodingTeamInput) -> List[TeamMemberResult]:
     """
@@ -48,7 +49,6 @@ async def run_full_workflow(requirements: str, team_members: List[str]) -> List[
     """
     # Import run_team_member dynamically to avoid circular imports
     from orchestrator.orchestrator_agent import run_team_member
-    from workflows.message_utils import extract_message_content
     
     # Generate a session ID for this workflow run
     workflow_session_id = generate_session_id()

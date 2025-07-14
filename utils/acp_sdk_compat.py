@@ -14,19 +14,9 @@ def patch_uvicorn_for_acp_sdk():
     
     This function must be called before importing acp_sdk.
     """
-    # Import necessary modules
-    import uvicorn.config
-    import configparser
-    from typing import IO, Any
-    
-    # Apply patches for missing attributes that acp_sdk expects
-    if not hasattr(uvicorn.config, 'RawConfigParser'):
-        uvicorn.config.RawConfigParser = configparser.RawConfigParser
-    
-    if not hasattr(uvicorn.config, 'IO'):
-        uvicorn.config.IO = IO
-    
-    print("✅ Applied uvicorn compatibility patches for acp_sdk")
+    # For now, no patches are needed
+    # This function is kept as a placeholder in case future compatibility issues arise
+    pass
 
 
 def ensure_compatibility():
