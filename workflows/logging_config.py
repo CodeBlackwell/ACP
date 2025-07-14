@@ -32,9 +32,9 @@ class LoggingConfig:
     async_write: bool = True  # Write logs asynchronously
     
     # Data truncation
-    max_input_length: int = 1000  # Maximum length of input data to log
-    max_output_length: int = 1000  # Maximum length of output data to log
-    truncate_commands: bool = True  # Truncate long commands
+    max_input_length: int = 1000000  # Maximum length of input data to log
+    max_output_length: int = 1000000  # Maximum length of output data to log
+    truncate_commands: bool = False  # Truncate long commands
     
     # Export settings
     auto_export_on_completion: bool = True  # Automatically export logs when workflow completes
@@ -76,12 +76,12 @@ class LoggingConfig:
     def minimal(cls) -> "LoggingConfig":
         """Create minimal logging configuration (errors only)"""
         return cls(
-            log_agent_exchanges=False,
-            log_command_executions=False,
+            log_agent_exchanges=True,
+            log_command_executions=True,
             log_errors=True,
-            log_metrics=False,
-            log_validation_results=False,
-            auto_export_on_completion=False
+            log_metrics=True,
+            log_validation_results=True,
+            auto_export_on_completion=True
         )
     
     @classmethod
@@ -93,8 +93,8 @@ class LoggingConfig:
             log_errors=True,
             log_metrics=True,
             log_validation_results=True,
-            max_input_length=5000,
-            max_output_length=5000,
+            max_input_length=1000000,
+            max_output_length=1000000,
             truncate_commands=False
         )
     

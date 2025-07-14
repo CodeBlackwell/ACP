@@ -47,7 +47,7 @@ def verify_imports():
     return all_imports_successful
 
 # Run import verification
-verify_imports()
+# verify_imports()
 
 # Import shared data models
 from shared.data_models import (

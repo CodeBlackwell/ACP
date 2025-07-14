@@ -59,7 +59,7 @@ TEST_SCENARIOS = {
     TestComplexity.MINIMAL: TestScenario(
         name="Hello World API : In Python",
         complexity=TestComplexity.MINIMAL,
-        requirements="Create a basic 'Hello World' REST API endpoint that returns a JSON response. **Only Use Python**",
+        requirements="Create a basic 'Hello World' REST API endpoint that returns a JSON response.Write tests using pytest. **Only Use Python**",
         timeout=180
     ),
     TestComplexity.STANDARD: TestScenario(
@@ -72,6 +72,7 @@ TEST_SCENARIOS = {
         - PUT /todos/:id - Update a todo
         - DELETE /todos/:id - Delete a todo
         Include proper error handling and validation. 
+        Write tests using pytest.
         **Only Use Python**""",
         timeout=300
     ),
