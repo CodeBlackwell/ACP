@@ -193,7 +193,7 @@ class TestResult:
     
     # Results
     agent_results: List[TeamMemberResult] = field(default_factory=list)
-    # execution_report removed - tracing disabled
+    
     
     # Observations and metrics
     observations: TestObservations = field(default_factory=TestObservations)

@@ -11,6 +11,8 @@ from workflows.incremental.feature_orchestrator import run_incremental_coding_ph
 # Import executor components
 from agents.executor.executor_agent import generate_session_id
 from workflows.message_utils import extract_message_content
+from workflows.execution_logger import ExecutionLogger
+import re
 
 async def execute_full_workflow(input_data: CodingTeamInput) -> List[TeamMemberResult]:
     """
@@ -53,6 +55,11 @@ async def run_full_workflow(requirements: str, team_members: List[str]) -> List[
     # Generate a session ID for this workflow run
     workflow_session_id = generate_session_id()
     print(f"🔗 Workflow Session ID: {workflow_session_id}")
+    
+    # Initialize ExecutionLogger
+    logger = ExecutionLogger(workflow_session_id)
+    logger.log_metric("workflow_type", "full")
+    logger.log_metric("requirements_length", len(requirements))
 
     # Import review_output from the renamed workflow_utils.py file
     from workflows import workflow_utils
@@ -67,8 +74,15 @@ async def run_full_workflow(requirements: str, team_members: List[str]) -> List[
     # Step 1: Planning
     if "planner" in team_members:
         print("📋 Planning phase...")
+        # Log agent request
+        request_id = logger.log_agent_request("planner_agent", requirements)
+        
         planning_result = await run_team_member("planner_agent", requirements)
         plan_output = extract_message_content(planning_result)
+        
+        # Log agent response
+        logger.log_agent_response("planner_agent", request_id, plan_output)
+        
         results.append(TeamMemberResult(
             team_member=TeamMember.planner,
             output=plan_output,
@@ -86,8 +100,16 @@ async def run_full_workflow(requirements: str, team_members: List[str]) -> List[
         if "designer" in team_members:
             print("🎨 Design phase...")
             design_input = f"Plan:\n{plan_output}\n\nRequirements: {requirements}"
+            
+            # Log agent request
+            request_id = logger.log_agent_request("designer_agent", design_input)
+            
             design_result = await run_team_member("designer_agent", design_input)
             design_output = extract_message_content(design_result)
+            
+            # Log agent response
+            logger.log_agent_response("designer_agent", request_id, design_output)
+            
             results.append(TeamMemberResult(
                 team_member=TeamMember.designer,
                 output=design_output,
@@ -162,8 +184,22 @@ Execute the following code:
                     print("⚠️ Falling back to standard implementation...")
                     
                     code_input = f"SESSION_ID: {workflow_session_id}\n\nPlan:\n{plan_output}\n\nDesign:\n{design_output}\n\nRequirements: {requirements}"
+                    
+                    # Log agent request
+                    request_id = logger.log_agent_request("coder_agent", code_input)
+                    
                     code_result = await run_team_member("coder_agent", code_input)
                     code_output = extract_message_content(code_result)
+                    
+                    # Log agent response
+                    logger.log_agent_response("coder_agent", request_id, code_output)
+                    
+                    # Extract generated app path from coder output
+                    path_match = re.search(r'📁 Location: ([^\n]+)', code_output)
+                    if path_match:
+                        generated_app_path = path_match.group(1).strip()
+                        logger.set_generated_app_path(generated_app_path)
+                        logger.log_metric("generated_app_path", generated_app_path)
                     
                     results.append(TeamMemberResult(
                         team_member=TeamMember.coder,
@@ -200,12 +236,34 @@ Execute the following code:
                 if "reviewer" in team_members:
                     print("🔍 Final review phase...")
                     review_input = f"Requirements: {requirements}\n\nPlan:\n{plan_output}\n\nDesign:\n{design_output}\n\nImplementation:\n{code_output}"
+                    
+                    # Log agent request
+                    request_id = logger.log_agent_request("reviewer_agent", review_input)
+                    
                     review_result = await run_team_member("reviewer_agent", review_input)
                     review_result_output = extract_message_content(review_result)
+                    
+                    # Log agent response
+                    logger.log_agent_response("reviewer_agent", request_id, review_result_output)
+                    
                     results.append(TeamMemberResult(
                         team_member=TeamMember.reviewer,
                         output=review_result_output,
                         name="reviewer"
                     ))
+    
+    # Log workflow completion and export logs
+    logger.log_workflow_end(status="completed")
+    
+    # Export logs
+    csv_path = logger.export_csv()
+    json_path = logger.export_json()
+    
+    print(f"\n📄 Execution logs exported:")
+    print(f"   CSV: {csv_path}")
+    print(f"   JSON: {json_path}")
+    
+    # Print summary
+    print(logger.get_summary())
     
     return results

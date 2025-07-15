@@ -109,6 +109,9 @@ class ExecutionLogger:
         self.log_dir = log_dir or Path("./logs")
         self.log_dir.mkdir(parents=True, exist_ok=True)
         
+        # Store the generated app path when available
+        self.generated_app_path: Optional[Path] = None
+        
         self.entries: List[LogEntry] = []
         self._lock = threading.Lock()
         self._timers: Dict[str, float] = {}
@@ -130,6 +133,18 @@ class ExecutionLogger:
     def _get_timestamp(self) -> str:
         """Get current timestamp in ISO format"""
         return datetime.now().isoformat()
+    
+    def set_generated_app_path(self, app_path: str) -> None:
+        """
+        Set the generated app path for exporting logs.
+        
+        Args:
+            app_path: Path to the generated application directory
+        """
+        # Clean the path - extract just the first line if multiple lines
+        clean_path = app_path.split('\n')[0].strip()
+        self.generated_app_path = Path(clean_path)
+        print(f"📁 ExecutionLogger: Generated app path set to: {self.generated_app_path}")
     
     def start_timer(self, timer_id: str) -> None:
         """Start a timer for measuring duration"""
@@ -341,8 +356,13 @@ class ExecutionLogger:
         if not filename:
             filename = f"execution_report_{self.session_id}.csv"
         
-        filepath = self.log_dir / filename
+        # Use generated app path if available, otherwise use log_dir
+        primary_dir = self.generated_app_path if self.generated_app_path and self.generated_app_path.exists() else self.log_dir
+        filepath = primary_dir / filename
         print(f"DEBUG: CSV export path: {filepath}")
+        
+        # Ensure directory exists
+        filepath.parent.mkdir(parents=True, exist_ok=True)
         
         with open(filepath, 'w', newline='', encoding='utf-8') as csvfile:
             writer = csv.writer(csvfile)
@@ -351,6 +371,13 @@ class ExecutionLogger:
             with self._lock:
                 for entry in self.entries:
                     writer.writerow(entry.to_csv_row())
+        
+        # If we used generated app path, also save to log_dir for backup
+        if primary_dir == self.generated_app_path:
+            backup_filepath = self.log_dir / filename
+            import shutil
+            shutil.copy2(filepath, backup_filepath)
+            print(f"📋 CSV report backup saved to: {backup_filepath}")
         
         # Save a copy to additional directory if provided
         if additional_dir:
@@ -379,8 +406,13 @@ class ExecutionLogger:
         if not filename:
             filename = f"execution_report_{self.session_id}.json"
         
-        filepath = self.log_dir / filename
+        # Use generated app path if available, otherwise use log_dir
+        primary_dir = self.generated_app_path if self.generated_app_path and self.generated_app_path.exists() else self.log_dir
+        filepath = primary_dir / filename
         print(f"DEBUG: JSON export path: {filepath}")
+        
+        # Ensure directory exists
+        filepath.parent.mkdir(parents=True, exist_ok=True)
         
         try:
             with self._lock:
@@ -397,12 +429,12 @@ class ExecutionLogger:
                         print(f"ERROR: Failed to serialize entry {i+1}: {str(e)}")
                         entries_list.append({"error": f"Entry {i+1} serialization failed"})
                 
-                print(f"DEBUG: Getting statistics...")
-                stats = self.get_statistics()
+                # print(f"DEBUG: Getting statistics...")
+                # stats = self.get_statistics()
                 
                 report = {
                     "session_id": self.session_id,
-                    "statistics": stats,
+                    # "statistics": stats,
                     "entries": entries_list
                 }
                 print(f"DEBUG: Report built successfully")
@@ -416,6 +448,13 @@ class ExecutionLogger:
             import traceback
             traceback.print_exc()
             raise
+        
+        # If we used generated app path, also save to log_dir for backup
+        if primary_dir == self.generated_app_path:
+            backup_filepath = self.log_dir / filename
+            import shutil
+            shutil.copy2(filepath, backup_filepath)
+            print(f"📋 JSON report backup saved to: {backup_filepath}")
         
         # Save a copy to additional directory if provided
         if additional_dir:
