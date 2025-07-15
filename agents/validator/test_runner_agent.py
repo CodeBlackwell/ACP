@@ -32,7 +32,7 @@ class TestRunnerAgent:
         }
         
         self.test_commands = {
-            'pytest': ['pytest', '-v', '--tb=short', '--junit-xml=test_results.xml'],
+            'pytest': ['python', '-m', 'pytest', '-v', '--tb=short', '--junit-xml=test_results.xml'],
             'unittest': ['python', '-m', 'unittest', 'discover', '-v'],
             'jest': ['npm', 'test', '--', '--json', '--outputFile=test_results.json'],
             'mocha': ['npm', 'test'],
