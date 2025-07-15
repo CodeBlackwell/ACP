@@ -34,6 +34,9 @@ from workflows.workflow_manager import get_available_workflows, get_workflow_des
 # Import Test Runner components
 from agents.validator import TestRunnerAgent, TestReportGenerator
 
+# Import ExecutionLogger for tracking agent communications
+from workflows.execution_logger import ExecutionLogger
+
 
 # ============================================================================
 # TEST CONFIGURATION
@@ -232,6 +235,9 @@ class ModernWorkflowTester:
         self.test_results: Dict[str, TestResult] = {}
         self.current_test: Optional[TestResult] = None
         
+        # Initialize ExecutionLogger for tracking agent communications
+        self.execution_logger: Optional[ExecutionLogger] = None
+        
         # Session metadata
         self.session_metadata = {
             "session_id": self.session_id,
@@ -284,6 +290,21 @@ class ModernWorkflowTester:
             result.status = "running"
             result.metrics.start_time = time.time()
             
+            # Initialize ExecutionLogger for this test run
+            test_session_id = f"{workflow_type}_{scenario.complexity.value}_{int(time.time())}"
+            self.execution_logger = ExecutionLogger(
+                session_id=test_session_id,
+                log_dir=self.output_dir / "logs"
+            )
+            
+            # Log workflow start
+            self.execution_logger.log_workflow_start(
+                metadata={
+                    "workflow_name": workflow_type,
+                    "input_data": scenario.requirements[:500]  # Truncate for logging
+                }
+            )
+            
             # Create workflow input
             input_data = CodingTeamInput(
                 requirements=scenario.requirements,
@@ -304,21 +325,25 @@ class ModernWorkflowTester:
             print("⚡ Executing workflow...")
             start_exec = time.time()
             
-            # Use timeout
+            # Use timeout and capture agent communications
             agent_results = await asyncio.wait_for(
-                execute_workflow(input_data),
+                self._execute_workflow_with_logging(input_data),
                 timeout=scenario.timeout
             )
             
             exec_duration = time.time() - start_exec
             print(f"   ✅ Workflow completed in {exec_duration:.2f}s\n")
             
+            # Log workflow end
+            self.execution_logger.log_workflow_end(
+                status="success"
+            )
+            
             # Store results
             result.agent_results = agent_results
-            # execution_report removed - tracing disabled
             
-            # Extract metrics from execution report
-            self._extract_metrics(result, None)
+            # Extract metrics from execution logger
+            self._extract_metrics(result, self.execution_logger)
             
             # Make observations about the execution
             self._observe_execution(result)
@@ -344,20 +369,90 @@ class ModernWorkflowTester:
             result.metrics.end_time = time.time()
             print(f"\n⏰ TIMEOUT: Test exceeded {scenario.timeout}s limit")
             
+            # Log workflow end with timeout status
+            if self.execution_logger:
+                self.execution_logger.log_workflow_end(
+                    status="timeout",
+                    error=result.error_message
+                )
+            
         except Exception as e:
             result.status = "failed"
             result.error_message = str(e)
             result.metrics.end_time = time.time()
             print(f"\n❌ ERROR: {str(e)}")
             print(f"📋 Traceback:\n{traceback.format_exc()}")
+            
+            # Log workflow end with error
+            if self.execution_logger:
+                self.execution_logger.log_error(
+                    error_message=str(e),
+                    context={"traceback": traceback.format_exc()}
+                )
+                self.execution_logger.log_workflow_end(
+                    status="failed",
+                    error=result.error_message
+                )
         
         finally:
+            # Export execution report before cleanup
+            if self.execution_logger:
+                try:
+                    # Set generated app path if available
+                    if hasattr(result.observations, 'generated_app_path') and result.observations.generated_app_path:
+                        self.execution_logger.set_generated_app_path(result.observations.generated_app_path)
+                    
+                    # Export execution report
+                    report_path = self.execution_logger.export_csv()
+                    print(f"\n📊 Execution report saved: {report_path}")
+                    
+                    # Store report path in observations
+                    result.observations.notable_events.append(f"Execution report: {report_path}")
+                except Exception as e:
+                    print(f"\n⚠️  Warning: Failed to export execution report: {str(e)}")
+            
             self.current_test = None
         
         return result
     
-    def _extract_metrics(self, result: TestResult, report):
-        """Extract metrics from execution report"""
+    async def _execute_workflow_with_logging(self, input_data: CodingTeamInput) -> List[TeamMemberResult]:
+        """
+        Execute workflow while capturing and logging all agent communications.
+        """
+        # Import execute_workflow here to avoid circular imports
+        from workflows import execute_workflow
+        
+        # Start timer for this workflow execution
+        start_time = time.time()
+        
+        # Execute the actual workflow
+        agent_results = await execute_workflow(input_data)
+        
+        # Log each agent's interaction
+        for agent_result in agent_results:
+            agent_name = agent_result.name or agent_result.team_member.value
+            
+            # Log agent request (we use the requirements as input for simplicity)
+            request_id = self.execution_logger.log_agent_request(
+                agent_name=agent_name,
+                input_data=input_data.requirements[:500]  # Truncate for logging
+            )
+            
+            # Log agent response
+            self.execution_logger.log_agent_response(
+                agent_name=agent_name,
+                request_id=request_id,
+                output_data=agent_result.output[:1000],  # Truncate for logging
+                status="success"
+            )
+            
+            # Log in console for visibility
+            print(f"   📝 Logged {agent_name} output ({len(agent_result.output)} chars)")
+        
+        return agent_results
+    
+    def _extract_metrics(self, result: TestResult, execution_logger: Optional[ExecutionLogger]):
+        """Extract metrics from execution logger and agent results"""
         metrics = result.metrics
         
         # Always extract output metrics from agent results
@@ -367,8 +462,22 @@ class ModernWorkflowTester:
             metrics.output_by_agent[agent_name] = output_size
             metrics.total_output_size += output_size
         
-        # Extract from report if available (currently disabled)
-        if report:
+        # Extract from execution logger if available
+        if execution_logger:
+            stats = execution_logger.get_statistics()
+            
+            # Extract agent timings
+            for agent_name, agent_stats in stats.get('agent_statistics', {}).items():
+                if agent_stats.get('average_duration_ms'):
+                    metrics.agent_timings[agent_name] = agent_stats['average_duration_ms'] / 1000.0  # Convert to seconds
+            
+            # Set total steps based on number of logged entries
+            metrics.total_steps = stats.get('total_entries', 0)
+            metrics.completed_steps = len([e for e in execution_logger.entries if e.status == 'success'])
+            metrics.failed_steps = len([e for e in execution_logger.entries if e.status == 'failed'])
+        
+        # Legacy report extraction (kept for backward compatibility)
+        if hasattr(execution_logger, 'report') and execution_logger.report:
             # Step metrics
             metrics.total_steps = report.step_count
             metrics.completed_steps = report.completed_steps
@@ -665,7 +774,28 @@ class ModernWorkflowTester:
                 "error": result.error_message
             }, f, indent=2)
         
-        # Save execution report - disabled (tracing removed)
+        # Save execution report if available
+        if self.execution_logger:
+            try:
+                # Export both CSV and JSON reports to the test directory
+                csv_report_path = test_dir / f"execution_report_{result.test_id}.csv"
+                json_report_path = test_dir / f"execution_report_{result.test_id}.json"
+                
+                # Export to CSV
+                original_csv_path = self.execution_logger.export_csv()
+                if original_csv_path and original_csv_path.exists():
+                    import shutil
+                    shutil.copy(original_csv_path, csv_report_path)
+                    print(f"   📊 CSV execution report: {csv_report_path.name}")
+                
+                # Export to JSON
+                original_json_path = self.execution_logger.export_json()
+                if original_json_path and original_json_path.exists():
+                    shutil.copy(original_json_path, json_report_path)
+                    print(f"   📊 JSON execution report: {json_report_path.name}")
+                    
+            except Exception as e:
+                print(f"   ⚠️  Warning: Failed to save execution reports: {str(e)}")
         
         # Save agent outputs
         outputs_dir = test_dir / "agent_outputs"
